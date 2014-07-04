@@ -66,7 +66,7 @@ X003d:	di
 	mov	d,a		; zero D, L, H
 	mov	l,a
 	mov	h,a
-X0049:	inr	a		; next 2K ROM
+csrom:	inr	a		; next 2K ROM
 	mov	b,a		; store the current ROM # in B
 	out	82h		; show current ROM on LEDs
 	mvi	c,8		; Checksum over 8 256B blocks
@@ -77,11 +77,11 @@ X004f:	rlc			;    Rotate A left
 	inr	h		; next block
 	dcr	c		; decrement block count
 	jnz	X004f		; ... repeat until end of chip
-	ora	a
-X005b:	jnz	X005b
-	mov	a,b
-	cpi	4
-	jnz	X0049
+	ora	a		; Check the value of the accumulator
+X005b:	jnz	X005b		; If it's not zero, hang forever
+	mov	a,b		; Put the ROM # back in the accumulator
+	cpi	4		; If it's not 4...
+	jnz	csrom		; repeat for the next ROM
 	inr	a
 	out	82h
 	mvi	c,0aah
