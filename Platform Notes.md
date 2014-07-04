@@ -67,7 +67,10 @@ Location  |  Purpose
 0x00      | Startup
 0x08      | Keyboard interrupt
 0x10      | Receiver
+0x18      | Keyboard interrupt and receiver
 0x20      | Vertical frequency
+0x30      | Vertical frequency and receiver
+0x38      | Vertical frequency and keyboard interrupt and receiver
 
 Other addresses are bitwise combinations of these interrupts! Crazy.
 

@@ -343,7 +343,7 @@ X0245:	mov	a,c
 ;
 X0251:	di
 	lxi	sp,X204e
-	lxi	h,X2000
+	lxi	h,2000h
 	push	h
 	mov	a,m
 	rar
@@ -392,7 +392,7 @@ X02a4:	lxi	h,X204e
 	ret
 ;
 X02c0:	call	X0a15
-	lxi	h,X2000
+	lxi	h,2000h
 	lxi	d,X02d9
 	mvi	b,12h
 	call	X038b
@@ -1247,7 +1247,7 @@ X0875:	mov	a,d
 	ana	e
 	jnz	X086f
 X08a0:	mov	a,d
-	sta	X2000
+	sta	2000h
 	jmp	X0251
 ;
 X08a7:	ora	d
