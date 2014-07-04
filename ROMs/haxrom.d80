@@ -53,27 +53,30 @@ ivVR:	call	X03cc
 ;;; IV 0x30: vertical freq. & recv & kbd (kbd ignored)
 ivVRK:	jmp	ivVR
 ;
-init:	mvi	e,1
+init:	mvi	e,1		; e <- 1
 X003d:	di
 	mvi	a,0fh
-	out	62h
-	cma
-	out	42h
-	xra	a
-	mov	d,a
+	out	62h		; 0x0f to NVR latch
+	cma			; invert A (0xf0)
+	out	42h		; 0xf0 to brightness
+;;; Run checksum on each 2K ROM, indicating with
+;;; the keyboard LEDs which is being scanned.
+;;; The # of the chip being scanned is stored in B.
+	xra	a		; zero A
+	mov	d,a		; zero D, L, H
 	mov	l,a
 	mov	h,a
-X0049:	inr	a
-	mov	b,a
-	out	82h
-	mvi	c,8
-X004f:	rlc
-	xra	m
-	inr	l
-	jnz	X004f
-	inr	h
-	dcr	c
-	jnz	X004f
+X0049:	inr	a		; next 2K ROM
+	mov	b,a		; store the current ROM # in B
+	out	82h		; show current ROM on LEDs
+	mvi	c,8		; Checksum over 8 256B blocks
+X004f:	rlc			;    Rotate A left
+	xra	m		;    A <- A ^ memory
+	inr	l		;    next memory address
+	jnz	X004f		;    ... repeat until end of block
+	inr	h		; next block
+	dcr	c		; decrement block count
+	jnz	X004f		; ... repeat until end of chip
 	ora	a
 X005b:	jnz	X005b
 	mov	a,b
