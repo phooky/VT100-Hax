@@ -69,6 +69,7 @@ Location  |  Purpose
 0x10      | Receiver
 0x18      | Keyboard interrupt and receiver
 0x20      | Vertical frequency
+0x28      | Vertical frequency and keyboard interrupt
 0x30      | Vertical frequency and receiver
 0x38      | Vertical frequency and keyboard interrupt and receiver
 

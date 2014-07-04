@@ -2,57 +2,58 @@
 ;  DZ80 V3.4.1 8080 Disassembly of basic.bin
 ;  2014/07/01 10:20
 ;
+;;; Interrupt vector begins at 0
 	org	0
-;
-X0000:	di
+;;; IV 0x00: boot
+boot:	di
 	lxi	sp,X204e
-	jmp	X003b
-;
+	jmp	init
+
 	org	8
-;
-X0008:	call	X00fd
+;;; IV 0x08: kbd
+ivK:	call	X00fd
 	ei
 	ret
 ;
 X000d:	nop
 ;
 	org	10h
-;
-	call	X03cc
+;;; IV 0x10: recv
+ivR:	call	X03cc
 	ei
 X0014:	ret
 ;
 	nop
 ;
 	org	18h
-;
-	call	X03cc
+;;; IV 0x18: recv & kbd
+ivKR:	call	X03cc
 	call	X00fd
 	ei
 	ret
-;
-	call	X04cf
+;;; IV 0x20: vertical freq.
+ivV:	call	X04cf
 	ret
 ;
 	nop
 ;
 	org	28h
-;
+;;; IV 0x28: vertical freq. & kbd (kbd ignored)
 	call	X04cf
 	ret
 ;
 	nop
 ;
 	org	30h
-;
-X0030:	call	X03cc
+;;; IV 0x30: vertical freq. & recv
+ivVR:	call	X03cc
 	call	X04cf
 	ei
 	ret
+;;; IV 0x30: vertical freq. & recv & kbd (kbd ignored)
+ivVRK:	jmp	ivVR
 ;
-	jmp	X0030
-;
-X003b:	mvi	e,1
+init:	mvi	e,1
 X003d:	di
 	mvi	a,0fh
 	out	62h
@@ -637,7 +638,7 @@ X0476:	db	20h
 	mov	m,h
 	mov	m,a
 	mov	m,c
-	jmp	X0000
+	jmp	boot
 ;
 	org	485h
 ;
@@ -1591,7 +1592,7 @@ X0a7b:	inx	sp
 ;
 	mvi	a,48h
 	sta	X207e
-	lxi	h,X0000
+	lxi	h,00h
 	shld	X2130
 	pop	h
 X0aa2:	lxi	h,X0a15
@@ -3660,7 +3661,7 @@ X1837:	cmp	d
 X1844:	mov	m,a
 	jmp	X1636
 ;
-X1848:	lxi	h,X0000
+X1848:	lxi	h,00h
 	shld	X2130
 	mvi	a,0ffh
 	sta	X210e
@@ -3765,7 +3766,7 @@ X1900:	in	42h
 	out	62h
 	lxi	d,X21d3
 	mvi	b,0eh
-	lxi	h,X0000
+	lxi	h,00h
 X1916:	dad	h
 	ldax	d
 	ani	20h
@@ -3925,7 +3926,7 @@ X1a2b:	mvi	c,80h
 	shld	X2111
 	lxi	h,X19ee
 	shld	X2140
-	lxi	h,X0000
+	lxi	h,00h
 	shld	X2143
 	shld	X2172
 X1a45:	lhld	X2004
@@ -4356,7 +4357,7 @@ X1d17:	mvi	m,0
 	lda	X21ac
 	call	X1d61
 	call	X1c9f
-	lxi	d,X0008
+	lxi	d,08h
 	mvi	c,4
 	pop	psw
 	jz	X1d3d
