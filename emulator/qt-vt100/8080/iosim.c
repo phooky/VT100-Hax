@@ -136,6 +136,7 @@ void io_out(BYTE adr, BYTE data)
  */
 static BYTE io_trap_in(void)
 {
+    //printf("Read!\n"); fflush(stdout);
 	if (i_flag) {
 		cpu_error = IOTRAPIN;
 		cpu_state = STOPPED;
@@ -151,7 +152,9 @@ static BYTE io_trap_in(void)
  */
 static void io_trap_out(BYTE data)
 {
-	data++; /* to avoid compiler warning */
+    printf("WRITTEN %02x\n",data);
+    fflush(stdout);
+    data++; /* to avoid compiler warning */
 
 	if (i_flag) {
 		cpu_error = IOTRAPOUT;
