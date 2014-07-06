@@ -82,11 +82,11 @@ X005b:	jnz	X005b		; If it's not zero, hang forever
 	mov	a,b		; Put the ROM # back in the accumulator
 	cpi	4		; If it's not 4...
 	jnz	csrom		; repeat for the next ROM
-	inr	a
-	out	82h
-	mvi	c,0aah
-	mvi	b,2ch
-	in	42h
+	inr	a		
+	out	82h		; write 5 to LEDs
+	mvi	c,0aah		; c <- 0xaa
+	mvi	b,2ch		; b <- 0x2c
+	in	42h		; a <- flags buffer
 	ani	2
 	jnz	X0074
 	mvi	b,40h

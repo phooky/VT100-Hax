@@ -56,6 +56,7 @@ Relevant port addresses
 Location  | R/W | Description
 ----------|-----|------------
 0x42      |  W  | Brightness D/A latch
+0x42      |  R  | Flags buffer
 0x62      |  W  | Non-volatile memory latch
 0x82      |  W  | Keyboard write
 0x82      |  R  | Keyboad read
