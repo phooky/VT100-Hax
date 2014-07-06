@@ -100,19 +100,13 @@ void SimThread::run() {
     print_head();
     print_reg();
     */
-    /*
-    while (1) {
-        msleep(500);
-        leds = (leds+1)%8;
-        emit outKbdStatus(leds);
-    }
-*/
+
     int_off();
 }
 
 BYTE SimThread::ioIn(BYTE addr) {
-    //printf(" IN PORT %02x\n",addr);
-    //fflush(stdout);
+    printf(" IN PORT %02x at %04x\n",addr,PC-ram);
+    fflush(stdout);
     return 0;
 }
 

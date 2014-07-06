@@ -84,24 +84,28 @@ X005b:	jnz	X005b		; If it's not zero, hang forever
 	jnz	csrom		; repeat for the next ROM
 	inr	a		
 	out	82h		; write 5 to LEDs
-	mvi	c,0aah		; c <- 0xaa
-	mvi	b,2ch		; b <- 0x2c
-	in	42h		; a <- flags buffer
-	ani	2
-	jnz	X0074
-	mvi	b,40h
-X0074:	mov	h,b
-	dcx	h
-X0076:	mvi	m,0
-	dcx	h
-	mov	a,h
-	cpi	1fh
-	jnz	X0076
-	inx	h
-X0080:	mov	a,m
+;;; Zero all RAM. C gets the high byte of the address of the top of
+;;; RAM, HL is loaded with it, and it zeros memory all the way down,
+;;; leaving the start of RAM in HL
+	mvi	c,0aah		; Test pattern: 0xaa
+	mvi	b,2ch		; 0x2c is the top of RAM on the basic board
+	in	42h		;
+	ani	2		; flags buffer &= 0x02 : is AVO installed?
+	jnz	X0074		; if bit 2 is not set, AVO is installed
+	mvi	b,40h		; 0x40 is the top of RAM on the AVO
+X0074:	mov	h,b		; load HL with top of RAM
+	dcx	h		; dec HL
+X0076:	mvi	m,0		; M <- 0
+	dcx	h		; dec HL
+	mov	a,h		; a <- h
+	cpi	1fh		; compare to 1f (top of ROM)
+	jnz	X0076		; continue to zero if not at ROM
+	inx	h		; increment HL; now
+;;; From start of RAM, test that it's all zero
+X0080:	mov	a,m		; read a byte of memory
 	ora	a
-	jz	X0090
-	ani	0fh
+	jz	X0090		; if it's zero, skip ahead
+	ani	0fh		; and wit
 	mov	a,h
 	jnz	X00a1
 	cpi	30h
@@ -117,7 +121,7 @@ X0090:	mov	m,c
 	jnc	X00a8
 X00a1:	mvi	d,1
 	cpi	2ch
-X00a5:	jc	X00a5
+X00a5:	jc	X00a5		; Hang if low memory
 X00a8:	xra	a
 	inx	h
 	ora	l
@@ -125,14 +129,16 @@ X00a8:	xra	a
 	ora	h
 	cmp	b
 	jnz	X0080
+	;; Repeat mem test with pattern 0x55
 	mov	a,c
 	rlc
 	mov	c,a
 	jc	X0074
+;;;  Memory test is done
 	push	d
-	call	X02a4
-	call	X02eb
-	call	X175b
+	call	X02a4		;?
+	call	X02eb		;?
+	call	X175b		;?
 	pop	d
 X00c4:	jz	X00cb
 	mov	a,d
