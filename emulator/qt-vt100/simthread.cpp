@@ -38,7 +38,9 @@ static void do_unix(char *);
 static void do_help(void);
 static void cpu_err_msg(void);
 
-};
+}
+
+SimThread* sim;
 
 SimThread::SimThread(QObject *parent,char* romPath) :
     QThread(parent)
@@ -82,7 +84,7 @@ void SimThread::run() {
     qint64 count = romFile.read((char*)ram,65536);
     romFile.close();
     int_on();
-    init_io();
+    // add local io hooks
 
     i_flag = 0;
     cont:
@@ -105,6 +107,40 @@ void SimThread::run() {
         emit outKbdStatus(leds);
     }
 */
-    exit_io();
     int_off();
+}
+
+BYTE SimThread::ioIn(BYTE addr) {
+    //printf(" IN PORT %02x\n",addr);
+    //fflush(stdout);
+    return 0;
+}
+
+void SimThread::ioOut(BYTE addr, BYTE data) {
+    switch(addr) {
+    case 0x82:
+        emit outKbdStatus(data);
+        break;
+    default:
+        printf("OUT PORT %02x <- %02x\n",addr,data);
+        fflush(stdout);
+    }
+}
+
+extern "C" {
+BYTE io_in(BYTE addr);
+void io_out(BYTE addr, BYTE data);
+void exit_io();
+}
+
+void exit_io() {}
+
+BYTE io_in(BYTE addr)
+{
+    return sim->ioIn(addr);
+}
+
+void io_out(BYTE addr, BYTE data)
+{
+    sim->ioOut(addr,data);
 }

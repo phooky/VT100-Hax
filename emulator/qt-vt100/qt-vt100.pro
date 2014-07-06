@@ -25,8 +25,7 @@ SOURCES += main.cpp\
     8080/sim7.c \
     8080/simfun.c \
     8080/simglb.c \
-    8080/simint.c \
-    8080/iosim.c
+    8080/simint.c
 
 HEADERS  += mainwindow.h \
     simthread.h \

@@ -32,7 +32,8 @@
  * 29-MAY-14 Release 1.22 improved networking and bugfixes
  * 04-JUN-14 Release 1.23 added 8080 emulation
  */
-
+#ifndef SIM_H
+#define SIM_H
 /*
  *	The following defines may be activated, commented or modified
  *	by user for her/his own purpose.
@@ -135,3 +136,5 @@ struct softbreak {			/* structure of a breakpoint */
 	int	sb_pass;		/* no. of pass to break */
 };
 #endif
+
+#endif // SIM_H
