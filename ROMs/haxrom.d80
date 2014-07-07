@@ -6,12 +6,12 @@
 	org	0
 ;;; IV 0x00: boot
 boot:	di
-	lxi	sp,X204e
+	lxi	sp,X204e	; Initialize SP to top of stack
 	jmp	init
 
 	org	8
 ;;; IV 0x08: kbd
-ivK:	call	X00fd
+ivK:	call	f_kb		; call keyboard handler
 	ei
 	ret
 ;
@@ -19,7 +19,7 @@ X000d:	nop
 ;
 	org	10h
 ;;; IV 0x10: recv
-ivR:	call	X03cc
+ivR:	call	f_rcv		; call receiver handler
 	ei
 X0014:	ret
 ;
@@ -27,27 +27,27 @@ X0014:	ret
 ;
 	org	18h
 ;;; IV 0x18: recv & kbd
-ivKR:	call	X03cc
-	call	X00fd
+ivKR:	call	f_rcv		; call receiver handler
+	call	f_kb		; call keyboard handler
 	ei
 	ret
 ;;; IV 0x20: vertical freq.
-ivV:	call	X04cf
+ivV:	call	f_vrt		; call vertical handler
 	ret
 ;
 	nop
 ;
 	org	28h
 ;;; IV 0x28: vertical freq. & kbd (kbd ignored)
-	call	X04cf
+	call	f_vrt		; call vertical handler
 	ret
 ;
 	nop
 ;
 	org	30h
 ;;; IV 0x30: vertical freq. & recv
-ivVR:	call	X03cc
-	call	X04cf
+ivVR:	call	f_rcv		; call receiver handler
+	call	f_vrt		; call vertical handler
 	ei
 	ret
 ;;; IV 0x30: vertical freq. & recv & kbd (kbd ignored)
@@ -105,15 +105,15 @@ X0076:	mvi	m,0		; M <- 0
 X0080:	mov	a,m		; read a byte of memory
 	ora	a
 	jz	X0090		; if it's zero, skip ahead
-	ani	0fh		; and wit
+	ani	0fh		
 	mov	a,h
 	jnz	X00a1
 	cpi	30h
 	jc	X00a1
-X0090:	mov	m,c
+X0090:	mov	m,c		; run test pattern through ram
 	mov	a,m
 	xra	c
-	jz	X00a8
+	jz	X00a8		; jump to 00a8 if ok
 	ani	0fh
 	mov	a,h
 	jnz	X00a1
@@ -121,7 +121,7 @@ X0090:	mov	m,c
 	jnc	X00a8
 X00a1:	mvi	d,1
 	cpi	2ch
-X00a5:	jc	X00a5		; Hang if low memory
+X00a5:	jc	X00a5		; Hang if non-AVO memory
 X00a8:	xra	a
 	inx	h
 	ora	l
@@ -136,7 +136,7 @@ X00a8:	xra	a
 	jc	X0074
 ;;;  Memory test is done
 	push	d
-	call	X02a4		;?
+	call	X02a4		; zero scratch and screen mem; 
 	call	X02eb		;?
 	call	X175b		;?
 	pop	d
@@ -160,7 +160,7 @@ X00e0:	out	82h
 	ora	c
 	jnz	X00d6
 	out	82h
-	lda	X2068
+	lda	KBflg
 	ora	a
 	jm	X00f5
 	mov	a,d
@@ -170,40 +170,41 @@ X00f5:	push	d
 	call	X03a2
 	pop	d
 	jmp	X0875
-;
-X00fd:	push	psw
-	in	82h
+;;; Keyboard interrupt handler
+f_kb:	push	psw
+	in	82h		; Read from keyboard port
 	push	h
 	push	b
-	mov	b,a
-	sui	7ch
-	jm	X011a
-	mov	h,a
-X0109:	inr	h
-	mvi	a,10h
+	mov	b,a		; copy b <- a
+	sui	7ch		; subtract 0x7c from a
+	jm	X011a		; jump to 011a if a is a normal key
+	mov	h,a		; otherwise h <- a
+X0109:	inr	h		; h++
+	mvi	a,10h		; a <- 0x10
 	rrc
 X010d:	rlc
 	dcr	h
 	jnz	X010d
-	lxi	h,X2068
-	ora	m
-	mov	m,a
-	jmp	X012d
+	lxi	h,KBflg		; load keys flog addresss
+	ora	m		; or in control bit
+	mov	m,a		; store again
+	jmp	X012d		; jump to end to interrupt
 ;
-X011a:	lxi	h,X2068
+X011a:	lxi	h,KBflg		; load heys flag address
 	mvi	a,7
-	ana	m
-	cpi	4
-	jp	X012d
-	inr	m
-	lxi	h,X206a
-	call	X13de
-	mov	m,b
+	ana	m		; load key counter
+	cpi	4		; if overflow.. (>3 keys)
+	jp	X012d		; discard keypress and end interrupt
+	inr	m		; otherwise increment key counter
+	lxi	h,KBnbuf	; load key address buffer?
+	call	X13de		; add key counter to address buffer
+	mov	m,b		; save key to address buffer
 X012d:	pop	b
 	pop	h
 	pop	psw
 	ret
-;
+;;; End of keyboard interrupt handler
+	
 X0131:	ani	7fh
 	mov	c,a
 	lda	X207b
@@ -281,7 +282,7 @@ X01c3:	lxi	h,X0815
 	rnz
 	call	X0853
 	lxi	b,X020e
-	lxi	h,X2068
+	lxi	h,KBflg
 	mov	a,m
 	ani	10h
 	jnz	X0900
@@ -388,17 +389,17 @@ X0298:	call	X0bf2
 	lxi	b,X0011
 	call	X0f7e
 	jmp	X03ae
-;
-X02a4:	lxi	h,X204e
-	lxi	d,X0fb2
-	mvi	b,0
-	call	X1083
-	cma
-	sta	X2104
-	lxi	h,X2004
-	shld	X2052
-	lxi	h,X22d0
-	shld	X20f6
+;;; Zero all scratch and screen RAM above stack
+X02a4:	lxi	h,X204e		; HL <- 0x204e (top of stack)
+	lxi	d,X0fb2		; DE <- 0x0fb2
+	mvi	b,0		; B  <- 0
+	call	X1083		; memset(0x204e,0,0xfb2)
+	cma			; invert A
+	sta	X2104		; store A in 0x2104
+	lxi	h,X2004		; HL <- 0x2004
+	shld	X2052		; *(0x2052) = 0x2004
+	lxi	h,X22d0		; HL <- 0x22d0
+	shld	X20f6		; *(20f6) = 0x22d0
 	ret
 ;
 X02c0:	call	X0a15
@@ -533,18 +534,18 @@ X03ae:	call	X1488
 	xra	a
 	sta	X2144
 	jmp	X03ae
-;
-X03cc:	push	psw
+;;; Receiver interrupt handler
+f_rcv:	push	psw
 	push	b
 	push	h
-	in	0
+	in	0		; Read from PUSART data
 	ani	7fh
 	jz	X043a
 	mov	c,a
 	lda	X21a5
 	ora	a
 	jnz	X043a
-	in	1
+	in	1		; Read from PUSART ctrl
 	ani	38h
 	jz	X03ed
 	mvi	c,1ah
@@ -594,7 +595,8 @@ X043a:	pop	h
 	pop	b
 	pop	psw
 	ret
-;
+;;; End of keyboard interrupt handler
+	
 X043e:	mvi	a,0feh
 	ana	m
 	jmp	X0447
@@ -715,7 +717,8 @@ X0476:	db	20h
 	mov	h,e
 	mov	a,d
 	rst	7
-X04cf:	push	psw
+;;; Vertical interrupt handler
+f_vrt:	push	psw
 	push	h
 	push	d
 	call	X104e
@@ -974,7 +977,7 @@ X06a7:	mov	a,d
 	ora	a
 	ret
 ;
-X06aa:	lda	X2068
+X06aa:	lda	KBflg
 	mov	e,a
 	ani	80h
 	rz
@@ -998,7 +1001,7 @@ X06ca:	mov	a,m
 	push	h
 	push	b
 	mvi	b,3
-	lxi	h,X206a
+	lxi	h,KBnbuf
 X06d6:	cmp	m
 	jz	X06df
 	inx	h
@@ -1068,7 +1071,7 @@ X0743:	pop	h
 X0747:	mov	a,c
 	cpi	4
 	rp
-	lxi	b,X206a
+	lxi	b,KBnbuf
 X074e:	lxi	h,X206e
 X0751:	mov	a,m
 	ora	a
@@ -1202,7 +1205,7 @@ X0838:	lda	X2150
 	mvi	a,0e1h
 	sta	X2072
 X0841:	xra	a
-	lxi	h,X2068
+	lxi	h,KBflg
 	mov	d,m
 	mov	m,a
 	inx	h
@@ -2514,13 +2517,13 @@ X1074:	call	X13e3
 	call	X138d
 	shld	X214e
 	ret
-;
-X1083:	mov	m,b
-	inx	h
-	dcx	d
-	mov	a,d
-	ora	e
-	jnz	X1083
+;;; memset: Set memory from HL to HL+DE-1 to value B
+X1083:	mov	m,b		; M <- B
+	inx	h		; HL++
+	dcx	d		; DE--
+	mov	a,d		;
+	ora	e		; A = D | E
+	jnz	X1083		; repeat if A != 0
 	ret
 ;
 	mvi	c,0
@@ -3010,6 +3013,7 @@ X13d2:	mov	a,m
 	ret
 ;
 X13db:	lda	X2050
+	;; X13de: add A to HL
 X13de:	add	l
 	mov	l,a
 	rnc
@@ -4806,9 +4810,9 @@ X205b	equ	205bh
 X205c	equ	205ch
 X2065	equ	2065h
 X2067	equ	2067h
-X2068	equ	2068h
+KBflg	equ	2068h
 X2069	equ	2069h
-X206a	equ	206ah
+KBnbuf	equ	206ah
 X206e	equ	206eh
 X2072	equ	2072h
 X2073	equ	2073h
