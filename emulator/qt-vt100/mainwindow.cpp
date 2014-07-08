@@ -8,6 +8,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 }
 
+void MainWindow::connectSim(SimThread *sim)
+{
+    QObject::connect(ui->startButton,SIGNAL(released()),sim,SLOT(simRun()));
+    QObject::connect(ui->stopButton,SIGNAL(released()),sim,SLOT(simStop()));
+    QObject::connect(ui->stepButton,SIGNAL(released()),sim,SLOT(simStep()));
+
+}
+
 MainWindow::~MainWindow()
 {
     delete ui;

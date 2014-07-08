@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "ui_mainwindow.h"
 #include <QApplication>
 #include "simthread.h"
 
@@ -12,5 +13,6 @@ int main(int argc, char *argv[])
     sim = new SimThread(&a,argv[1]);
     sim->start();
     QObject::connect(sim,SIGNAL(outKbdStatus(quint8)),&w,SLOT(kbdStatus(quint8)));
-    return a.exec();
+    w.connectSim(sim);
+    a.exec();
 }

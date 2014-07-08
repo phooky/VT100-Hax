@@ -1,3 +1,4 @@
+
 #include "simthread.h"
 #include <QFile>
 #include "8080/sim.h"
@@ -87,10 +88,19 @@ void SimThread::run() {
     // add local io hooks
 
     i_flag = 0;
-    cont:
-    cpu_state = CONTIN_RUN;
-    cpu_error = NONE;
-    cpu_8080();
+    cpu_state = STOPPED;
+    while (1) {
+        cpu_error = NONE;
+        if (cpu_state == CONTIN_RUN || cpu_state == SINGLE_STEP) {
+            cpu_8080();
+            if (stepsRemaining > 0) {
+                stepsRemaining--;
+                cpu_state = SINGLE_STEP;
+            } else {
+                cpu_state = STOPPED;
+            }
+        }
+    }
     /*
     if (cpu_error == OPHALT)
         if (handel_break())
@@ -119,6 +129,24 @@ void SimThread::ioOut(BYTE addr, BYTE data) {
         printf("OUT PORT %02x <- %02x\n",addr,data);
         fflush(stdout);
     }
+}
+
+void SimThread::simStep(quint32 count)
+{
+    stepsRemaining = count;
+    cpu_state = SINGLE_STEP;
+}
+
+void SimThread::simRun()
+{
+    stepsRemaining = 0;
+    cpu_state = CONTIN_RUN;
+}
+
+void SimThread::simStop()
+{
+    stepsRemaining = 0;
+    cpu_state = STOPPED;
 }
 
 extern "C" {

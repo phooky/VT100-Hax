@@ -18,9 +18,13 @@ public:
     void ioOut(BYTE addr, BYTE data);
 private:
     char* romPath;
+    quint32 stepsRemaining;
 signals:
     void outKbdStatus(quint8 status);
 public slots:
+    void simStep(quint32 count = 1);
+    void simRun();
+    void simStop();
 
 };
 
