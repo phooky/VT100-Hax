@@ -3543,7 +3543,7 @@ X175b:	call	X02c0		; Initialize start of screen RAM and wipe attribute RAM to 0x
 	mvi	d,1		; D = 1
 X1762:	push	b		; push B, D
 	push	d
-	call	X17be		; call X17be? Seems convenient...
+	call	X17be		; Display wait message
 	pop	d
 	di
 	lxi	h,X217b
@@ -3593,13 +3593,13 @@ X17ac:	mov	a,c
 	shld	X2004
 	pop	psw
 	ret
-;
+;;; Show wait message
 X17be:	lxi	d,X17ec		; DE = 0x17ec
 	mvi	b,7		; B = 7
 	lxi	h,X21cc		; HL = 0x21cc
-	call	memmov		; Initialize 0x21cc to 
+	call	memmov		; Initialize 0x21cc to Wait message
 	lxi	h,Xcc71		; HL = 0xcc71
-	shld	X2004		; store 0x71cc in 0x2004 (retarget screen ram to 0x21cc?) (weird!)
+	shld	X2004		; retarget screen ram to display wait message
 	ret
 ;
 X17d0:	lxi	h,X217b
@@ -3608,9 +3608,9 @@ X17d5:	mvi	m,80h
 	inx	h
 	dcr	b
 	jnz	X17d5
-	lxi	d,X17f3
-	mvi	b,0bh
-	call	memmov
+	lxi	d,X17f3		; DE = 0x17f3
+	mvi	b,0bh		; B = 11
+	call	memmov		; store 
 	mvi	c,1
 	mvi	a,30h
 	sta	X2078
@@ -3619,17 +3619,11 @@ X17d5:	mvi	m,80h
 X17ec:
 	db	'Wait'
 	db	07fh,070h,06h
-	db	0
-	db	8
-	mov	l,m
-	db	20h
-	rnc
-	mov	d,b
-	nop
-	db	20h
-	nop
-	rpo
-	rpo
+X17f3:	
+	db	0,8,06eh,020h
+	db	0d0h,050h,0,020h
+	db	0,0e0h,0e0h
+
 	lda	X2155
 	lxi	b,X00ff
 	jmp	X180f
@@ -4788,7 +4782,6 @@ X00ff	equ	0ffh
 X0111	equ	111h
 X0113	equ	113h
 X0ea0	equ	0ea0h
-X17f3	equ	17f3h
 X1ccd	equ	1ccdh
 X2001	equ	2001h
 X2002	equ	2002h
