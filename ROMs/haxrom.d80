@@ -1,4 +1,4 @@
-;
+
 ;  DZ80 V3.4.1 8080 Disassembly of basic.bin
 ;  2014/07/01 10:20
 ;
@@ -136,8 +136,8 @@ X00a8:	xra	a
 	jc	X0074
 ;;;  Memory test is done
 	push	d
-	call	X02a4		; zero scratch and screen mem; 
-	call	X02eb		;?
+	call	X02a4		; zero scratch and screen mem
+	call	X02eb		; Set a number of scratch values to fixed values
 	call	X175b		;?
 	pop	d
 X00c4:	jz	X00cb
@@ -427,30 +427,31 @@ X02d9:	mov	a,a
 	mov	a,a
 	mov	m,b
 	inx	b
-X02eb:	lxi	h,X0212
-	shld	X212d
-	mvi	a,35h
-	sta	X212c
-	mvi	a,1
-	sta	X205b
-	sta	X2176
-	lxi	h,X07ff
-	shld	X2149
-	mvi	a,2
-	sta	X2073
-	mvi	a,0f7h
-	sta	X20fa
-	in	42h
-	ani	4
-	mvi	a,1
-	jnz	X031a
-	sta	X2079
-X031a:	mvi	a,0ffh
-	sta	X210e
-	sta	X21ba
-	mvi	h,80h
-	mov	l,h
-	shld	X20c0
+;;; Initialize several scratch values. We don't know what all of these are for yet.
+X02eb:	lxi	h,X0212 	; HL = 0x0212
+	shld	X212d		; Store 0x1202 at 0x212d
+	mvi	a,35h		; A = 0x35
+	sta	X212c		; 0x212c = 0x35
+	mvi	a,1		; A = 1
+	sta	X205b		; 0x205b = 1
+	sta	X2176		; 0x2176 = 1
+	lxi	h,X07ff		; HL = 0x07ff
+	shld	X2149		; store 0xff07 at 0x2149
+	mvi	a,2		; A = 2
+	sta	X2073		; 0x2073 = 2
+	mvi	a,0f7h		; A = 0xf7
+	sta	X20fa		; 0x20fa = 0xf7
+	in	42h		; read flags buffer
+	ani	4		; And it with 0x04 (check graphics flag)
+	mvi	a,1		; A=1
+	jnz	X031a		; if no graphics skip
+	sta	X2079		; else store 1 in 0x2079
+X031a:	mvi	a,0ffh		; A = 0xff
+	sta	X210e		; 0x210e = 0xff
+	sta	X21ba		; 0x21ba = 0xff
+	mvi	h,80h		; H = 0x80
+	mov	l,h		; L = 0x80
+	shld	X20c0		; Store 0x8080 at 0x20c0
 	ret
 ;
 X0329:	mvi	a,40h
@@ -3793,29 +3794,31 @@ X1916:	dad	h
 	jnz	X1916
 	shld	X21af
 	ret
-;
-X1928:	lda	X21ae
-X192b:	mvi	b,0ffh
-X192d:	inr	b
-	sui	0ah
-	jp	X192d
-	adi	0ah
-	lxi	h,X21d3
-	mvi	e,23h
-	mvi	d,14h
-X193c:	mov	m,e
-	inx	h
-	dcr	d
-	jnz	X193c
-	mvi	m,2fh
-	lxi	h,X21d3
-	mov	e,a
-	mvi	d,0
-	dad	d
-	mvi	m,22h
-	lxi	h,X21d3
-	mvi	a,0ah
-	add	b
+;;; MYSTERY FUNCTION: always called with C = 0x40 (even field in flags buffer?)
+X1928:	lda	X21ae		; Load accumulator from 0x21ae -- (0x42)
+X192b:	mvi	b,0ffh		; B = 0xff
+X192d:	inr	b		; increment B
+	sui	0ah		; subtract 0x0a from accumulator
+	jp	X192d		; repeat while accumulator is positive
+	adi	0ah		; add 0x0a to accumulator
+	;; B = A/160, A = A%160
+	lxi	h,X21d3		; HL = 0x21d3
+	mvi	e,23h		; E = 0x23
+	mvi	d,14h		; D = 0x14
+X193c:	mov	m,e		; Store 0x23 in M
+	inx	h		; HL++
+	dcr	d		; D--
+	jnz	X193c		; repeat until D is zero
+	;; Initialize 0x21d3 through 0x21e7 with 0x23
+	mvi	m,2fh		; Store 0x2f in 21e7
+	lxi	h,X21d3		; HL = 0x21d3
+	mov	e,a		; copy A to E
+	mvi	d,0		; clear D
+	dad	d		; add DE to HL
+	mvi	m,22h		; Store 0x22 in M
+	lxi	h,X21d3		; HL = 0x21d3
+	mvi	a,0ah		; A = 0x0a
+	add	b		; A = 0x0a + B
 	mov	e,a
 	dad	d
 	mvi	m,22h
@@ -3825,7 +3828,7 @@ X1957:	in	42h
 	lxi	h,X21d3
 	mvi	b,15h
 X1962:	in	42h
-	ana	c
+	ana	c		; Flags Buffer & C
 	jz	X1962
 	dcr	b
 	rm

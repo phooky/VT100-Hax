@@ -55,6 +55,20 @@ RAM Map
  0x2014  | 0x2015  |   1B   | 0xff during init?
 0x22d0  | 0x2c00  | 2352B  | Screen RAM
 
+Screen RAM organization
+-----------------------
+Starts at 0x2000. Each line consists of a terminator (0x7f) followed by
+two bytes of address and attributes:
+
+7 | 6 5 | 4 | 3 2 1 0 | 7 6 5 4 3 2 1
+--|-----|---|---------|--------------
+S | AA  | M | addr    | addr
+
+S == 1 if part of scrolling region
+AA == 11 if normal atrributes
+M == 1 if ram starting at 0x2000, M = 0 if ram starting at 0x4000 (?)
+addr == low bits of address
+
 Relevant port addresses
 -----------------------
 
@@ -79,9 +93,9 @@ Bit  | Active? | Description
 6    | H       | LBA 7(?) (It's a pin on the backplane connector...)
 5    | H       | NVR DATA
 4    | L       | EVEN FIELD (comes out of the video timing generator)
-3    | H       | OPTION PRESENT
-2    | L       | GRAPHICS FLAG
-1    | L       | ADVANCED VIDEO (is AVO present?) 
+3    | H       | OPTION PRESENT (terminal output option???)
+2    | L       | GRAPHICS FLAG (is VT52 graphics card present)
+1    | L       | ADVANCED VIDEO (is AVO present) 
 0    | H       | XMIT FLAG
 
 Interrupt vector
