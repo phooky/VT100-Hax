@@ -124,7 +124,7 @@ X13de  |  add A to HL
 X1083  |  set DE bytes starting at HL to B
 X02a4  |  init: zero all RAM above stack
 X038b  |  memmov: copy B bytes from DE to HL
-X0183  |  memset: set DE bytes starting at HL to B
+X1083  |  memset: set DE bytes starting at HL to B
 
 Control Function Parser
 -----------------------

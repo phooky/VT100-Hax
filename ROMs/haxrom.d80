@@ -411,22 +411,15 @@ X02c0:	call	X0a15		; 0x2140 = 0xe605
 	lxi	d,X1000
 	mvi	b,0ffh
 	jmp	memset
-;
-X02d9:	mov	a,a
-	mov	m,b
-	inx	b
-	mov	a,a
-	jp	X7fd0
-	mov	m,b
-	mvi	b,7fh
-	mov	m,b
-	inr	c
-	mov	a,a
-	mov	m,b
-	rrc
-	mov	a,a
-	mov	m,b
-	inx	b
+;;; 0x02d9 through 0x02eb are the initial values for the screen RAM;
+;;; it's copied into low RAM at 0x2000 during init.
+X02d9:
+	db	07fh,070h,03h
+	db	07fh,0f2h,0d0h
+	db	07fh,070h,06h
+	db	07fh,070h,0ch
+	db	07fh,070h,0fh
+	db	07fh,070h,03h
 ;;; Initialize several scratch values. We don't know what all of these are for yet.
 X02eb:	lxi	h,X0212 	; HL = 0x0212
 	shld	X212d		; Store 0x1202 at 0x212d
