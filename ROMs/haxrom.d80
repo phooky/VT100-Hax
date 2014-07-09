@@ -3544,24 +3544,24 @@ X175b:	call	X02c0		; Initialize start of screen RAM and wipe attribute RAM to 0x
 X1762:	push	b		; push B, D
 	push	d
 	call	X17be		; Display wait message
-	pop	d
-	di
-	lxi	h,X217b
-	mvi	e,33h
-	mvi	c,1
-	xra	a
-X1771:	sta	X21ae
-	mov	a,c
-	sta	X21ad
-	push	d
+	pop	d		; pop D
+	di			; disable interrupts(???)
+	lxi	h,X217b		; HL = 0x217b
+	mvi	e,33h		; E = 0x33
+	mvi	c,1		; C = 1
+	xra	a		; A = 0
+X1771:	sta	X21ae		; 0x21ae = A
+	mov	a,c		; A = C
+	sta	X21ad		; 0x21ad = A
+	push	d		; push D,H
 	push	h
-	mov	a,d
-	ora	a
-	mov	a,m
-	sta	X21af
-	cz	X18ae
-	call	X18a3
-	pop	h
+	mov	a,d		; A=D
+	ora	a		; or A
+	mov	a,m		; load A from HL
+	sta	X21af		; store it in 0x21af
+	cz	X18ae		; if A is 0 call X18ae
+	call	X18a3		; call X18a3
+	pop	h		; pop H,D
 	pop	d
 	lda	X21af
 	dcr	e
@@ -3624,6 +3624,7 @@ X17f3:
 	db	0d0h,050h,0,020h
 	db	0,0e0h,0e0h
 
+X17fe:	
 	lda	X2155
 	lxi	b,X00ff
 	jmp	X180f
@@ -3787,7 +3788,7 @@ X192d:	inr	b		; increment B
 	sui	0ah		; subtract 0x0a from accumulator
 	jp	X192d		; repeat while accumulator is positive
 	adi	0ah		; add 0x0a to accumulator
-	;; B = A/160, A = A%160
+	;; B = A/10, A = A%10
 	lxi	h,X21d3		; HL = 0x21d3
 	mvi	e,23h		; E = 0x23
 	mvi	d,14h		; D = 0x14
