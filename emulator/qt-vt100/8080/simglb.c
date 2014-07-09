@@ -99,6 +99,7 @@ long t_states;			/* number of counted T states */
 int t_flag;			/* flag, 1 = on, 0 = off */
 BYTE *t_start =	ram + 65535;	/* start address for measurement */
 BYTE *t_end = ram + 65535;	/* end address for measurement */
+unsigned long long t_ticks = 0;
 #endif
 
 /*

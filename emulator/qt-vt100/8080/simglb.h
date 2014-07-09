@@ -77,6 +77,7 @@ extern struct	softbreak soft[];
 extern long	t_states;
 extern int	t_flag;
 extern BYTE	*t_start, *t_end;
+extern unsigned long long t_ticks;
 #endif
 
 #ifdef FRONTPANEL

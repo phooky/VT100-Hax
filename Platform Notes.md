@@ -55,6 +55,28 @@ RAM Map
  0x2014  | 0x2015  |   1B   | 0xff during init?
 0x22d0  | 0x2c00  | 2352B  | Screen RAM
 
+Setup Area
+
+Start   |  Size  |  Description
+--------|--------|-------------
+0x21d3  | 22     | Answerback message (20chars+2delim)
+0x21e9  | 17     | Tabs (bit encoding)
+0x21fa  | 1      | 80/132 col mode
+   ?    | 1      | intensity
+        | 1      | Mode byte for PUSART
+        | 1      | Online/local
+        | 1      | Switches 1
+        | 1      | Switches 2
+        | 1      | Switches 3
+        | 1      | Switches 4
+        | 1      | Switches 5
+        | 1      | TX baud rate
+        | 1      | RX baud rate
+        | 1      | parity 
+        | 1      | nvr checksum
+
+
+
 Screen RAM organization
 -----------------------
 Starts at 0x2000. Each line consists of a terminator (0x7f) followed by
@@ -83,6 +105,13 @@ Location  | R/W | Description
 0x82      |  R  | Keyboad read
 0xA2      |  W  | vid. proc. DC012
 0xC2      |  W  | vid. proc. DC011
+
+The Mystery of the Even Field
+-----------------------------
+
+The even field line comes from BV4 EVEN FIELD L. That's emitted by a "74LS74E13"'s "1" output.
+Some sort of flip-flop? Inputs come from VERT DRIVE L and HORIZ DRIVE L.
+It appears that the EVEN FIELD L gets a low pulse at the start of an even frame.
 
 Flags buffer
 ------------

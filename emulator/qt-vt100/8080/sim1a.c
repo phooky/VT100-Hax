@@ -518,6 +518,7 @@ leave:
 			if (PC == t_end) /* check for end address */
 				t_flag = 0; /* if reached, switch off */
 		}
+        t_ticks += t;
 #endif
 
 #ifdef WANT_GUI

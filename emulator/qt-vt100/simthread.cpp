@@ -115,18 +115,17 @@ void SimThread::run() {
 }
 
 BYTE SimThread::ioIn(BYTE addr) {
-    //printf(" IN PORT %02x at %04x\n",addr,PC-ram);
-    fflush(stdout);
     if (addr == 0x42) {
-        //printf(" 21ae %02x\n",addr,ram[0x21ae]);
-        fflush(stdout);
         // Read buffer flag
         quint8 flags = 0x04;
-        if (0) {
+        if ((t_ticks % 1024) < 100) { // The fakiest timing in all of fakeville
             // even field
             flags |= 0x40;
         }
         return flags;
+    } else {
+        printf(" IN PORT %02x at %04x\n",addr,PC-ram);
+        fflush(stdout);
     }
     return 0;
 }
@@ -137,6 +136,10 @@ void SimThread::ioOut(BYTE addr, BYTE data) {
         printf("OUT PORT %02x <- %02x\n",addr,data);
         fflush(stdout);
         emit outKbdStatus(data);
+        break;
+    case 0x62:
+        printf("NVRAM %02x\n",data);
+        fflush(stdout);
         break;
     default:
         printf("OUT PORT %02x <- %02x\n",addr,data);
