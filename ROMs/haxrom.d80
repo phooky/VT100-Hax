@@ -393,7 +393,7 @@ X0298:	call	X0bf2
 X02a4:	lxi	h,X204e		; HL <- 0x204e (top of stack)
 	lxi	d,X0fb2		; DE <- 0x0fb2
 	mvi	b,0		; B  <- 0
-	call	X1083		; memset(0x204e,0,0xfb2)
+	call	memset		; memset(0x204e,0,0xfb2)
 	cma			; invert A
 	sta	X2104		; store A in 0x2104
 	lxi	h,X2004		; HL <- 0x2004
@@ -401,16 +401,16 @@ X02a4:	lxi	h,X204e		; HL <- 0x204e (top of stack)
 	lxi	h,X22d0		; HL <- 0x22d0
 	shld	X20f6		; *(20f6) = 0x22d0
 	ret
-;
-X02c0:	call	X0a15
-	lxi	h,2000h
-	lxi	d,X02d9
-	mvi	b,12h
-	call	X038b
+;;; Called during init...
+X02c0:	call	X0a15		; 0x2140 = 0xe605
+	lxi	h,2000h		; HL = 0x2000
+	lxi	d,X02d9		; DE = 0x02d9
+	mvi	b,12h		; B = 18
+	call	memmov		; copy 18 bytes from 0x02d9 to 0x2000
 	lxi	h,X3000
 	lxi	d,X1000
 	mvi	b,0ffh
-	jmp	X1083
+	jmp	memset
 ;
 X02d9:	mov	a,a
 	mov	m,b
@@ -501,13 +501,14 @@ X0381:	lda	X21a2
 	ora	a
 	jz	X0b63
 	jmp	X0b77
-;
-X038b:	ldax	d
-	mov	m,a
-	inx	h
-	inx	d
-	dcr	b
-	jnz	X038b
+;;; Performs a memmove(HL,DE,B)
+memmov:	
+X038b:	ldax	d		; Load memory at DE into accumulator
+	mov	m,a		; Store it at HL
+	inx	h		; HL++
+	inx	d		; DE++
+	dcr	b		; B--
+	jnz	X038b		; until B is zero
 	ret
 ;
 X0394:	lda	X21a5
@@ -1489,8 +1490,8 @@ X0a0d:	stax	d
 	pchl
 ;
 X0a14:	pop	h
-X0a15:	lxi	h,X05e6
-X0a18:	shld	X2140
+X0a15:	lxi	h,X05e6		; HL = 0x05e6
+X0a18:	shld	X2140		; 0x2140 = 0xe605
 	ret
 ;
 X0a1c:	mov	b,c
@@ -1887,7 +1888,7 @@ X0c62:	lxi	h,X05ad
 	lxi	h,X20f8
 	lxi	d,X2102
 X0c77:	mvi	b,0bh
-	call	X038b
+	call	memmov
 	jmp	X1636
 ;
 	lxi	h,X0c8a
@@ -2519,6 +2520,7 @@ X1074:	call	X13e3
 	shld	X214e
 	ret
 ;;; memset: Set memory from HL to HL+DE-1 to value B
+memset:	
 X1083:	mov	m,b		; M <- B
 	inx	h		; HL++
 	dcx	d		; DE--
@@ -3542,8 +3544,8 @@ X174c:	mov	m,a
 X1754:	mvi	d,0
 	mvi	b,1
 	jmp	X1762
-;
-X175b:	call	X02c0
+;;; Third initialization call?
+X175b:	call	X02c0		;?
 	mvi	b,0ah
 	mvi	d,1
 X1762:	push	b
@@ -3602,7 +3604,7 @@ X17ac:	mov	a,c
 X17be:	lxi	d,X17ec
 	mvi	b,7
 	lxi	h,X21cc
-	call	X038b
+	call	memmov
 	lxi	h,Xcc71
 	shld	X2004
 	ret
@@ -3615,7 +3617,7 @@ X17d5:	mvi	m,80h
 	jnz	X17d5
 	lxi	d,X17f3
 	mvi	b,0bh
-	call	X038b
+	call	memmov
 	mvi	c,1
 	mvi	a,30h
 	sta	X2078
@@ -4412,7 +4414,7 @@ X1d56:	db	20h
 	db	20h
 X1d61:	mov	c,a
 	mvi	b,0bh
-	call	X038b
+	call	memmov
 	mov	a,c
 	rrc
 	rrc
@@ -4427,7 +4429,7 @@ X1d61:	mov	c,a
 	dad	b
 	xchg
 	mvi	b,5
-	jmp	X038b
+	jmp	memmov
 ;
 X1d7c:	db	20h
 	db	20h
@@ -4600,7 +4602,7 @@ X1e9f:	call	X1edd
 	shld	X21b4
 	mov	b,a
 	lxi	d,X0014
-	call	X1083
+	call	memset
 	lxi	h,X1eb8
 	shld	X2140
 	ret
