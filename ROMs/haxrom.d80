@@ -401,16 +401,16 @@ X02a4:	lxi	h,X204e		; HL <- 0x204e (top of stack)
 	lxi	h,X22d0		; HL <- 0x22d0
 	shld	X20f6		; *(20f6) = 0x22d0
 	ret
-;;; Called during init...
+;;; Initialize start of screen RAM and wipe attribute RAM to 0xff
 X02c0:	call	X0a15		; 0x2140 = 0xe605
 	lxi	h,2000h		; HL = 0x2000
 	lxi	d,X02d9		; DE = 0x02d9
 	mvi	b,12h		; B = 18
 	call	memmov		; copy 18 bytes from 0x02d9 to 0x2000
-	lxi	h,X3000
-	lxi	d,X1000
-	mvi	b,0ffh
-	jmp	memset
+	lxi	h,X3000		; HL = 0x3000
+	lxi	d,X1000		; DE = 0x1000
+	mvi	b,0ffh		; B = 0xFF
+	jmp	memset		; Set all of attribute RAM to 0xFF and return
 ;;; 0x02d9 through 0x02eb are the initial values for the screen RAM;
 ;;; it's copied into low RAM at 0x2000 during init.
 X02d9:
@@ -3538,12 +3538,12 @@ X1754:	mvi	d,0
 	mvi	b,1
 	jmp	X1762
 ;;; Third initialization call?
-X175b:	call	X02c0		;?
-	mvi	b,0ah
-	mvi	d,1
-X1762:	push	b
+X175b:	call	X02c0		; Initialize start of screen RAM and wipe attribute RAM to 0xff
+	mvi	b,0ah		; B = 0x0a
+	mvi	d,1		; D = 1
+X1762:	push	b		; push B, D
 	push	d
-	call	X17be
+	call	X17be		; call X17be? Seems convenient...
 	pop	d
 	di
 	lxi	h,X217b
@@ -3594,12 +3594,12 @@ X17ac:	mov	a,c
 	pop	psw
 	ret
 ;
-X17be:	lxi	d,X17ec
-	mvi	b,7
-	lxi	h,X21cc
-	call	memmov
-	lxi	h,Xcc71
-	shld	X2004
+X17be:	lxi	d,X17ec		; DE = 0x17ec
+	mvi	b,7		; B = 7
+	lxi	h,X21cc		; HL = 0x21cc
+	call	memmov		; Initialize 0x21cc to 
+	lxi	h,Xcc71		; HL = 0xcc71
+	shld	X2004		; store 0x71cc in 0x2004 (retarget screen ram to 0x21cc?) (weird!)
 	ret
 ;
 X17d0:	lxi	h,X217b
@@ -3616,13 +3616,10 @@ X17d5:	mvi	m,80h
 	sta	X2078
 	ret
 ;
-X17ec:	mov	d,a
-	mov	h,c
-	mov	l,c
-	mov	m,h
-	mov	a,a
-	mov	m,b
-	mvi	b,0
+X17ec:
+	db	'Wait'
+	db	07fh,070h,06h
+	db	0
 	db	8
 	mov	l,m
 	db	20h
