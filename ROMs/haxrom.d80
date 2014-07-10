@@ -3742,44 +3742,44 @@ X18d7:	in	42h
 	jnz	X18d7
 	mvi	a,2fh		; Write 0x2fh (standby) to nvr latch
 	out	62h
-	lxi	h,X21d3
-	mvi	b,0eh
+	lxi	h,X21d3		; HL=X21d3
+	mvi	b,0eh		; B= 14 -- we're reading 14 bits
 X18e6:	in	42h
 	ana	c
 	jz	X18e6
 X18ec:	in	42h
 	ana	c
-	jnz	X18ec
-	mvi	a,25h
+	jnz	X18ec		; wait for NVR clock L
+	mvi	a,25h		; shft bit out of nvr
 	out	62h
 X18f6:	in	42h
 	ana	c
-	jz	X18f6
-	in	42h
+	jz	X18f6		; wait for NVR clock H
+	in	42h		; read bit and store it in memory
 	mov	m,a
 	inx	h
 X1900:	in	42h
 	ana	c
-	jnz	X1900
+	jnz	X1900		; wait for NVR clock L
 	dcr	b
-	jnz	X18f6
-	mvi	a,2fh
+	jnz	X18f6		; read next bit
+	mvi	a,2fh		; send standby
 	out	62h
-	lxi	d,X21d3
-	mvi	b,0eh
-	lxi	h,00h
-X1916:	dad	h
-	ldax	d
-	ani	20h
+	lxi	d,X21d3		; DE=0x21d3
+	mvi	b,0eh		; B = 14
+	lxi	h,00h		; HL = 0
+X1916:	dad	h		; 
+	ldax	d		; load next char
+	ani	20h		; and with NVR data bit
+	rlc			; rotate NVR bit to high bit
 	rlc
 	rlc
-	rlc
-	ora	l
+	ora	l		; 
 	mov	l,a
 	inx	d
 	dcr	b
 	jnz	X1916
-	shld	X21af
+	shld	X21af		; Store the finished data in 21af and 21ae
 	ret
 ;;; Loads address A into NVR address register
 X1928:	lda	X21ae		; Load accumulator from 0x21ae -- (0x42)

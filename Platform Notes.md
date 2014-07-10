@@ -106,12 +106,18 @@ Location  | R/W | Description
 0xA2      |  W  | vid. proc. DC012
 0xC2      |  W  | vid. proc. DC011
 
-The Mystery of the Even Field
------------------------------
+There is no even field mystery. It was the LBA 7 (also known as the NVR clock) all along!
 
-The even field line comes from BV4 EVEN FIELD L. That's emitted by a "74LS74E13"'s "1" output.
-Some sort of flip-flop? Inputs come from VERT DRIVE L and HORIZ DRIVE L.
-It appears that the EVEN FIELD L gets a low pulse at the start of an even frame.
+NVRAM interactions
+------------------
+data is D0
+C1 is D1
+C2 is D2
+C3 is D3
+!SPDS is D5
+
+Accept address high, accept address low, standby, read, standby, (accept data is standby?)
+22 23x9 22 23x9 0x2f 0x2d 0x2f 0x25 0x2f 0x30 0x23
 
 Flags buffer
 ------------
@@ -119,7 +125,7 @@ Flags buffer
 Bit  | Active? | Description
 -----|---------|------------
 7    | H       | KBD TBMT(?)
-6    | H       | LBA 7(?) (It's a pin on the backplane connector...)
+6    | H       | LBA 7(?) (It's a pin on the backplane connector...) - used to clock NVR - line buffer address
 5    | H       | NVR DATA
 4    | L       | EVEN FIELD (comes out of the video timing generator)
 3    | H       | OPTION PRESENT (terminal output option???)

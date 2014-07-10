@@ -88,18 +88,20 @@ void SimThread::run() {
     // add local io hooks
 
     i_flag = 0;
-    cpu_state = STOPPED;
+
+    // We are always running the CPU in single-step mode so we can do the clock toggles when necessary.
+    cpu_state = SINGLE_STEP;
     while (1) {
-        cpu_error = NONE;
-        if (cpu_state == CONTIN_RUN || cpu_state == SINGLE_STEP) {
+        while (stepsRemaining--) {
+            cpu_error = NONE;
             cpu_8080();
-            if (stepsRemaining > 0) {
-                stepsRemaining--;
-                cpu_state = SINGLE_STEP;
-            } else {
-                cpu_state = STOPPED;
-            }
+            // Work out LBA7 signal (NVR clock)
+            bool nlba7 = (t_ticks % 1024) < 100;
+            if (!lba7 && nlba7) nvr.clock();
+            lba7 = nlba7;
+            //if (t_ticks - tstart)
         }
+        msleep(50);
     }
     /*
     if (cpu_error == OPHALT)
@@ -118,9 +120,11 @@ BYTE SimThread::ioIn(BYTE addr) {
     if (addr == 0x42) {
         // Read buffer flag
         quint8 flags = 0x04;
-        if ((t_ticks % 1024) < 100) { // The fakiest timing in all of fakeville
-            // even field
+        if (lba7) {
             flags |= 0x40;
+        }
+        if (nvr.output()) {
+            flags |= 0x20;
         }
         return flags;
     } else {
@@ -133,13 +137,14 @@ BYTE SimThread::ioIn(BYTE addr) {
 void SimThread::ioOut(BYTE addr, BYTE data) {
     switch(addr) {
     case 0x82:
-        printf("OUT PORT %02x <- %02x\n",addr,data);
-        fflush(stdout);
+        //printf("OUT PORT %02x <- %02x\n",addr,data);
+        //fflush(stdout);
         emit outKbdStatus(data);
         break;
     case 0x62:
-        printf("NVRAM %02x\n",data);
-        fflush(stdout);
+        //printf("NVRAM %02x\n",data);
+        //fflush(stdout);
+        nvr.set_latch(data);;
         break;
     default:
         printf("OUT PORT %02x <- %02x\n",addr,data);
@@ -150,19 +155,16 @@ void SimThread::ioOut(BYTE addr, BYTE data) {
 void SimThread::simStep(quint32 count)
 {
     stepsRemaining = count;
-    cpu_state = SINGLE_STEP;
 }
 
 void SimThread::simRun()
 {
-    stepsRemaining = 0;
-    cpu_state = CONTIN_RUN;
+    stepsRemaining = 0xffffffff;
 }
 
 void SimThread::simStop()
 {
     stepsRemaining = 0;
-    cpu_state = STOPPED;
 }
 
 extern "C" {

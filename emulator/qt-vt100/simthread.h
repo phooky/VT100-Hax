@@ -2,6 +2,7 @@
 #define SIMTHREAD_H
 
 #include <QThread>
+#include "nvr.h"
 
 extern "C" {
 #include "8080/sim.h"
@@ -19,6 +20,8 @@ public:
 private:
     char* romPath;
     quint32 stepsRemaining;
+    NVR nvr;
+    bool lba7;
 signals:
     void outKbdStatus(quint8 status);
 public slots:
