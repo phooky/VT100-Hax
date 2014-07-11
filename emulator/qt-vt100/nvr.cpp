@@ -40,6 +40,7 @@ quint8 compute_addr(quint32 address_reg) {
 void NVR::clock() {
     quint8 command = (latch>>1) & 0b111;
     quint8 bit = latch & 0x01;
+    quint16 addr;
     switch(command) {
     case STANDBY:
         break;
@@ -53,12 +54,16 @@ void NVR::clock() {
         data_reg = (data_reg << 1) | bit;
         break;
     case WRITE:
-        contents[compute_addr(address_reg)] = data_reg & 0x3fff;
+        addr = compute_addr(address_reg);
+        contents[addr] = data_reg & 0x3fff;
+        printf("writing %02d:%x\n",addr,data_reg & 0x3fff);
+        fflush(stdout);
         break;
     case READ:
-        printf("reading %x:%02d\n",address_reg,compute_addr(address_reg));
+        addr = compute_addr(address_reg);
+        data_reg = contents[addr];
+        printf("reading %02d:%x\n",addr,data_reg);
         fflush(stdout);
-        data_reg = contents[compute_addr(address_reg)];
         break;
     case SHIFT_OUT:
         out = data_reg & 0x0200;
