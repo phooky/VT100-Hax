@@ -28,7 +28,8 @@ public slots:
     void simStep(quint32 count = 1);
     void simRun();
     void simStop();
-
+    void doSetup();
+    void keypress(quint8 keycode);
 };
 
 extern SimThread* sim;

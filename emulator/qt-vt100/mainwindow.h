@@ -18,7 +18,7 @@ public:
     ~MainWindow();
 public slots:
     void kbdStatus(quint8 kbdStatus);
-
+    void updateDisplay();
 private:
     Ui::MainWindow *ui;
 };

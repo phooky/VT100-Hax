@@ -167,6 +167,19 @@ void SimThread::simStop()
     stepsRemaining = 0;
 }
 
+void SimThread::doSetup()
+{
+    printf("SET-UP\n");
+    keypress(0x7b);
+}
+
+void SimThread::keypress(quint8 keycode)
+{
+    // todo
+    // keyboard interrupt: int_data = 0xcf and int_int = 1
+
+}
+
 extern "C" {
 BYTE io_in(BYTE addr);
 void io_out(BYTE addr, BYTE data);
