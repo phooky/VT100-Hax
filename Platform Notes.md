@@ -1,29 +1,27 @@
 Notes on the VT100 Platform
 ===========================
 
-Questions:
-----------
-* Do we have the advanced video option (AVO)?
-
-page 60 of the manual: 8080 overview diagram
-page 62: overview of vt100 board
-page 94: nonvolatile RAM 
-
-Jul82 Technical Manual Errata:
-------------------------------
-The diagram on page 5-69 has the order of the ROMs reversed.
-
 Overview
 --------
 
-* Processor: Intel 8080
+* Processor: Intel 8080 running at about 2.76MHz
 * Basic display modes: 80x24 or 132x14 (132x24 for avo)
 * RAM: 3KB(3072 bytes) combined screen and scratch
 * ROM: 8KB(8192 bytes) for processor data and code
 ** ROMs include a checksum which is checked at self-test
 ** Checksum: every 2K, summed, mod 0xff == 0
 * Character generation ROM(s): 2KB(2048 bytes) for characters
-* Non-volatile RAM for storing configuration
+* Non-volatile RAM for storing configuration, ER1400 (1400 bits)
+
+Clocks
+------
+
+NVR/LBA7: 15.734 kHz (63.556 uS); estimate at 8 * LBA4
+LBA4 period : 7.945uS
+Kbd transmission time : 1.27mS/B
+Vertical freq: ~60 Hz
+Processor: 2.765 MHz
+Dot clock: 24 MHz in 132-char mode; 16 MHz in 80-char mode
 
 Memory Map
 ----------
@@ -124,7 +122,7 @@ Flags buffer
 
 Bit  | Active? | Description
 -----|---------|------------
-7    | H       | KBD TBMT(?)
+7    | H       | KBD Transmit Buffer Empty
 6    | H       | LBA 7(?) (It's a pin on the backplane connector...) - used to clock NVR - line buffer address
 5    | H       | NVR DATA
 4    | L       | EVEN FIELD (comes out of the video timing generator)

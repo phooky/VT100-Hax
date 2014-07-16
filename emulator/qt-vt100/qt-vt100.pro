@@ -26,12 +26,14 @@ SOURCES += main.cpp\
     8080/simfun.c \
     8080/simglb.c \
     8080/simint.c \
-    nvr.cpp
+    nvr.cpp \
+    keyboard.cpp
 
 HEADERS  += mainwindow.h \
     simthread.h \
     8080/sim.h \
     8080/simglb.h \
-    nvr.h
+    nvr.h \
+    keyboard.h
 
 FORMS    += mainwindow.ui

@@ -138,7 +138,7 @@ X00a8:	xra	a
 	push	d
 	call	X02a4		; zero scratch and screen mem
 	call	X02eb		; Set a number of scratch values to fixed values
-	call	X175b		;?
+	call	X175b		; .... more memory initialization
 	pop	d
 X00c4:	jz	X00cb
 	mov	a,d
@@ -185,12 +185,12 @@ X0109:	inr	h		; h++
 X010d:	rlc
 	dcr	h
 	jnz	X010d
-	lxi	h,KBflg		; load keys flog addresss
+	lxi	h,KBflg		; load keys flag addresss
 	ora	m		; or in control bit
 	mov	m,a		; store again
 	jmp	X012d		; jump to end to interrupt
 ;
-X011a:	lxi	h,KBflg		; load heys flag address
+X011a:	lxi	h,KBflg		; load keys flag address
 	mvi	a,7
 	ana	m		; load key counter
 	cpi	4		; if overflow.. (>3 keys)
@@ -3133,36 +3133,36 @@ X1488:	call	X1493
 	ani	10h
 	cz	X06aa
 	jmp	X0e59
-;
-X1493:	in	42h
-	ani	80h
-	rz
-	lxi	h,X2144
-	mov	a,m
-	ora	a
-	jz	X14a2
-	mvi	a,10h
+;;; SUBROUTINE A
+X1493:	in	42h		; Read flags buffer
+	ani	80h		; check if transmit buffer is empty
+	rz			; if zero, return
+	lxi	h,X2144		; HL = 0x2144
+	mov	a,m		; Load from 2144
+	ora	a		; Check if zero
+	jz	X14a2		; 
+	mvi	a,10h		; If not, A = 10 (else A is zero)
 X14a2:	lxi	h,X21a5
-	ora	m
+	ora	m		; or bits from 0x21a5
 	lxi	h,X2145
-	ora	m
-	inx	h
-	ora	m
-	inx	h
-	ora	m
-	mvi	m,0
-	inx	h
-	ora	m
-	mvi	m,0
-	out	82h
-	lxi	h,X2074
-	inr	m
-	lda	X2077
-	ora	a
+	ora	m		; or bits from 0x2145
+	inx	h		;
+	ora	m		; ... and 0x2146
+	inx	h		;
+	ora	m		; ... and 0x2147
+	mvi	m,0		; zero 0x2147
+	inx	h		;
+	ora	m		; ... and 0x2148
+	mvi	m,0		; zero 0x2148
+	out	82h		; Write to keyboard buffer
+	lxi	h,X2074		; 
+	inr	m		; Increment what's at 0x2074
+	lda	X2077		; load what's at 0x2077
+	ora	a		; return if it's not zero
 	rnz
-	lda	X2065
-	lxi	h,X2051
-	ora	m
+	lda	X2065		; A =  0x2065
+	lxi	h,X2051		
+	ora	m		; return if [0x2065] | [0x2051] != 0
 	rnz
 	lhld	X212d
 	dcx	h

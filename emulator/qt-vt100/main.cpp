@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
     sim = new SimThread(&a,argv[1]);
     sim->start();
     QObject::connect(sim,SIGNAL(outKbdStatus(quint8)),&w,SLOT(kbdStatus(quint8)));
+    QObject::connect(sim,SIGNAL(cycleDone()),&w,SLOT(updateMemory()));
 
     w.connectSim(sim);
     a.exec();

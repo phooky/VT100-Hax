@@ -16,38 +16,48 @@ extern int getkey(void);
 extern void int_on(void), int_off(void);
 extern int load_file(char *);
 
-static void do_step(void);
-static void do_trace(char *);
-static void do_go(char *);
-static int handel_break(void);
-static void do_dump(char *);
-static void do_list(char *);
-static void do_modify(char *);
-static void do_fill(char *);
-static void do_move(char *);
-static void do_port(char *);
-static void do_reg(char *);
-static void print_head(void);
-static void print_reg(void);
-static void do_break(char *);
-static void do_hist(char *);
-static void do_count(char *);
-static void do_clock(void);
-static void timeout(int);
-static void do_show(void);
-static void do_unix(char *);
-static void do_help(void);
-static void cpu_err_msg(void);
-
 }
 
 SimThread* sim;
 
 SimThread::SimThread(QObject *parent,char* romPath) :
-    QThread(parent)
+    QThread(parent), stepsRemaining(0)
 {
     this->romPath = romPath;
 }
+
+class Signal {
+private:
+    bool value;
+    bool has_change;
+    uint16_t period_half;
+    uint16_t ticks;
+public:
+    Signal(uint16_t period);
+    bool add_ticks(uint16_t delta);
+    bool get_value() { return value; }
+};
+
+Signal::Signal(uint16_t period) : value(false),has_change(false),period_half(period/2),ticks(0) {
+}
+
+bool Signal::add_ticks(uint16_t delta) {
+    ticks += delta;
+    if (ticks >= period_half) {
+        ticks -= period_half;
+        value = !value;
+        return true;
+    }
+    return false;
+}
+
+// In terms of processor cycles:
+// LBA4 : period of 22 cycles
+// LBA7 : period of 182 cycles
+// Vertical interrupt: period of 46084 cycles
+Signal lba4(22);
+Signal lba7(182);
+Signal vertical(46084);
 
 void SimThread::run() {
     i_flag = 1;
@@ -55,7 +65,6 @@ void SimThread::run() {
     m_flag = 0;
     tmax = f_flag*10000;
     cpu = I8080;
-    quint8 leds = 0;
     printf("\nRelease %s, %s\n", RELEASE, COPYR);
     if (f_flag > 0)
         printf("\nCPU speed is %d MHz\n", f_flag);
@@ -83,6 +92,7 @@ void SimThread::run() {
         return;
     }
     qint64 count = romFile.read((char*)ram,65536);
+    printf("Read ROM file; %lld bytes\n",count);
     romFile.close();
     int_on();
     // add local io hooks
@@ -92,16 +102,43 @@ void SimThread::run() {
     // We are always running the CPU in single-step mode so we can do the clock toggles when necessary.
     cpu_state = SINGLE_STEP;
     while (1) {
-        while (stepsRemaining--) {
+        simLock.lock();
+        if (stepsRemaining > 0) {
+            stepsRemaining--;
+            simLock.unlock();
+            const uint32_t start = t_ticks;
             cpu_error = NONE;
             cpu_8080();
-            // Work out LBA7 signal (NVR clock)
-            bool nlba7 = (t_ticks % 1024) < 100;
-            if (!lba7 && nlba7) nvr.clock();
-            lba7 = nlba7;
-            //if (t_ticks - tstart)
+            int_data = 0xff;
+            const uint16_t t = t_ticks - start;
+            if (lba4.add_ticks(t)) {
+                kbdLock.lock();
+                if (kbd.clock(lba4.get_value())) {
+                        int_data &= 0xcf;
+                        int_int = 1;
+                }
+                kbdLock.unlock();
+            }
+            if (lba7.add_ticks(t)) {
+                nvr.clock(lba7.get_value());
+            }
+            if (vertical.add_ticks(t)) {
+                if (vertical.get_value()) {
+                    int_data &= 0xe7;
+                }
+            }
+            // Compute clocks: LBA7, LBA4, Even Signal, Vertical interrupt
+            // LBA7 goes to the NVR clock
+            // LBA4 goes to the keyboard
+            // Vertical Freq generates an interrupt
+            // In terms of processor cycles:
+            // LBA4 : period of 22 cycles
+            // LBA7 : period of 182 cycles
+            // Vertical interrupt: period of 46084 cycles
+        } else {
+            simLock.unlock();
+            msleep(50);
         }
-        msleep(50);
     }
     /*
     if (cpu_error == OPHALT)
@@ -119,17 +156,21 @@ void SimThread::run() {
 BYTE SimThread::ioIn(BYTE addr) {
     if (addr == 0x42) {
         // Read buffer flag
-        quint8 flags = 0x04;
-        if (lba7) {
+        quint8 flags = 0x02;
+        if (lba7.get_value()) {
             flags |= 0x40;
         }
-        if (nvr.output()) {
+        if (nvr.data()) {
             flags |= 0x20;
         }
+        if (t_ticks % 2000 < 100) { flags |= 0x10; flags |= 0x80; }
+        if (kbd.get_tx_buf_empty()) {
+            flags |= 0x80; // kbd ready?
+        }
+        //printf(" IN PORT %02x -- %02x\n",addr,flags);fflush(stdout);
         return flags;
     } else {
-        printf(" IN PORT %02x at %04x\n",addr,PC-ram);
-        fflush(stdout);
+        printf(" IN PORT %02x at %04lx\n",addr,PC-ram);fflush(stdout);
     }
     return 0;
 }
@@ -139,46 +180,52 @@ void SimThread::ioOut(BYTE addr, BYTE data) {
     case 0x82:
         //printf("OUT PORT %02x <- %02x\n",addr,data);
         //fflush(stdout);
+        kbd.set_status(data);
         emit outKbdStatus(data);
         break;
     case 0x62:
         //printf("NVRAM %02x\n",data);
         //fflush(stdout);
-        nvr.set_latch(data);;
+        nvr.set_latch(data);
         break;
     default:
-        printf("OUT PORT %02x <- %02x\n",addr,data);
-        fflush(stdout);
+        printf("OUT PORT %02x <- %02x\n",addr,data);fflush(stdout);
+        break;
     }
 }
 
 void SimThread::simStep(quint32 count)
 {
+    simLock.lock();
     stepsRemaining = count;
+    printf("Current PC is %04x; executing %d instructions\n",(unsigned int)(PC-ram),count); fflush(stdout);
+    simLock.unlock();
 }
 
 void SimThread::simRun()
 {
+    printf("START******************\n"); fflush(stdout);
+    simLock.lock();
     stepsRemaining = 0xffffffff;
+    simLock.unlock();
 }
 
 void SimThread::simStop()
 {
-    stepsRemaining = 0;
-}
-
-void SimThread::doSetup()
-{
-    printf("SET-UP\n");
-    keypress(0x7b);
+    printf("STOP*******************\n"); fflush(stdout);
+    simLock.lock();
+    printf("Current PC is %04x\n",(unsigned int)(PC-ram)); fflush(stdout);
+    stepsRemaining = 1;
+    simLock.unlock();
 }
 
 void SimThread::keypress(quint8 keycode)
 {
-    // todo
-    // keyboard interrupt: int_data = 0xcf and int_int = 1
-
+    kbdLock.lock();
+    kbd.keypress(keycode);
+    kbdLock.unlock();
 }
+
 
 extern "C" {
 BYTE io_in(BYTE addr);
