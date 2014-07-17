@@ -13,19 +13,15 @@ class Vt100Sim
 {
 public:
     Vt100Sim(char* romPath = 0);
-    void run();
-    // Calls from C code
+    void init();
     BYTE ioIn(BYTE addr);
     void ioOut(BYTE addr, BYTE data);
     NVR nvr;
     Keyboard kbd;
 private:
     char* romPath;
-    uint32_t stepsRemaining;
 public:
-    void simStep(uint32_t count = 1);
-    void simRun();
-    void simStop();
+    void step();
     void keypress(uint8_t keycode);
 };
 

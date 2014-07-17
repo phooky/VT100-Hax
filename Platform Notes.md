@@ -18,6 +18,7 @@ Clocks
 
 NVR/LBA7: 15.734 kHz (63.556 uS); estimate at 8 * LBA4
 LBA4 period : 7.945uS
+Even line: 
 Kbd transmission time : 1.27mS/B
 Vertical freq: ~60 Hz
 Processor: 2.765 MHz

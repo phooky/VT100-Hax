@@ -21,8 +21,7 @@ extern int load_file(char *);
 
 Vt100Sim* sim;
 
-Vt100Sim::Vt100Sim(char* romPath) :
-    stepsRemaining(0)
+Vt100Sim::Vt100Sim(char* romPath)
 {
     this->romPath = romPath;
 }
@@ -60,7 +59,7 @@ Signal lba4(22);
 Signal lba7(182);
 Signal vertical(46084);
 
-void Vt100Sim::run() {
+void Vt100Sim::init() {
     i_flag = 1;
     f_flag = 10;
     m_flag = 0;
@@ -102,51 +101,6 @@ void Vt100Sim::run() {
 
     // We are always running the CPU in single-step mode so we can do the clock toggles when necessary.
     cpu_state = SINGLE_STEP;
-    while (1) {
-        if (stepsRemaining > 0) {
-            stepsRemaining--;
-            const uint32_t start = t_ticks;
-            cpu_error = NONE;
-            cpu_8080();
-            int_data = 0xff;
-            const uint16_t t = t_ticks - start;
-            if (lba4.add_ticks(t)) {
-                if (kbd.clock(lba4.get_value())) {
-                        int_data &= 0xcf;
-                        int_int = 1;
-                }
-            }
-            if (lba7.add_ticks(t)) {
-                nvr.clock(lba7.get_value());
-            }
-            if (vertical.add_ticks(t)) {
-                if (vertical.get_value()) {
-                    int_data &= 0xe7;
-                }
-            }
-            // Compute clocks: LBA7, LBA4, Even Signal, Vertical interrupt
-            // LBA7 goes to the NVR clock
-            // LBA4 goes to the keyboard
-            // Vertical Freq generates an interrupt
-            // In terms of processor cycles:
-            // LBA4 : period of 22 cycles
-            // LBA7 : period of 182 cycles
-            // Vertical interrupt: period of 46084 cycles
-        } else {
-	  usleep(5000);
-        }
-    }
-    /*
-    if (cpu_error == OPHALT)
-        if (handel_break())
-            if (!cpu_error)
-                goto cont;
-    cpu_err_msg();
-    print_head();
-    print_reg();
-    */
-
-    int_off();
 }
 
 BYTE Vt100Sim::ioIn(BYTE addr) {
@@ -189,23 +143,28 @@ void Vt100Sim::ioOut(BYTE addr, BYTE data) {
     }
 }
 
-void Vt100Sim::simStep(uint32_t count)
+void Vt100Sim::step()
 {
-    stepsRemaining = count;
-    printf("Current PC is %04x; executing %d instructions\n",(unsigned int)(PC-ram),count); fflush(stdout);
-}
-
-void Vt100Sim::simRun()
-{
-    printf("START******************\n"); fflush(stdout);
-    stepsRemaining = 0xffffffff;
-}
-
-void Vt100Sim::simStop()
-{
-    printf("STOP*******************\n"); fflush(stdout);
-    printf("Current PC is %04x\n",(unsigned int)(PC-ram)); fflush(stdout);
-    stepsRemaining = 1;
+  const uint32_t start = t_ticks;
+  cpu_error = NONE;
+  cpu_8080();
+  int_data = 0xff;
+  const uint16_t t = t_ticks - start;
+  if (lba4.add_ticks(t)) {
+    if (kbd.clock(lba4.get_value())) {
+      int_data &= 0xcf;
+      int_int = 1;
+    }
+  }
+  if (lba7.add_ticks(t)) {
+    nvr.clock(lba7.get_value());
+  }
+  if (vertical.add_ticks(t)) {
+    if (vertical.get_value()) {
+      int_data &= 0xe7;
+    }
+  }
+  printf("Current PC is %04x\n",(unsigned int)(PC-ram)); fflush(stdout);
 }
 
 void Vt100Sim::keypress(uint8_t keycode)

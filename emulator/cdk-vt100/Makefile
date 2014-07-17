@@ -15,7 +15,7 @@ OBJS=main.o nvr.o keyboard.o vt100sim.o \
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	g++ -o $(TARGET) $^
+	g++ -o $(TARGET) $^ -lcdk -lncurses
 
 clean:
 	rm $(OBJS) $(TARGET)
