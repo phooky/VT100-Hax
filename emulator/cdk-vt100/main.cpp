@@ -26,11 +26,12 @@ int main(int argc, char *argv[])
   
   /* Draw the label          */
   drawCDKLabel (demo, TRUE);
-  waitCDKLabel (demo, ' ');
 
   sim = new Vt100Sim(argv[1]);
   sim->init();
   for (int i = 0; i < 10000; i++) { sim->step(); }
+
+  waitCDKLabel (demo, ' ');
   
   /* Clean up           */
   destroyCDKLabel (demo);
