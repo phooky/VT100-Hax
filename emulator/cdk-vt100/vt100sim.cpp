@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <ncurses.h>
 
 extern "C" {
 extern void int_on(void), int_off(void);
@@ -21,9 +22,32 @@ extern int load_file(char *);
 
 Vt100Sim* sim;
 
-Vt100Sim::Vt100Sim(char* romPath)
+WINDOW* regWin;
+WINDOW* memWin;
+
+Vt100Sim::Vt100Sim(char* romPath, bool color)
 {
+  initscr();
+  int my,mx;
+  getmaxyx(stdscr,my,mx);
+  if (color) { start_color(); }
+  cbreak();
     this->romPath = romPath;
+    curs_set(0);
+    regWin = subwin(stdscr,8,12,0,0);
+    memWin = subwin(stdscr,8,mx-12,0,12);
+    box(regWin,0,0);
+    box(memWin,0,0);
+    init_pair(1,COLOR_RED,COLOR_BLACK);
+    init_pair(2,COLOR_BLUE,COLOR_BLACK);
+    wattron(regWin,COLOR_PAIR(1));
+    wattron(memWin,COLOR_PAIR(2));
+    refresh();
+}
+
+Vt100Sim::~Vt100Sim() {
+  curs_set(1);
+  endwin();
 }
 
 class Signal {
@@ -65,25 +89,25 @@ void Vt100Sim::init() {
     m_flag = 0;
     tmax = f_flag*10000;
     cpu = I8080;
-    printf("\nRelease %s, %s\n", RELEASE, COPYR);
-    if (f_flag > 0)
-        printf("\nCPU speed is %d MHz\n", f_flag);
-    else
-        printf("\nCPU speed is unlimited\n");
+    //printf("\nRelease %s, %s\n", RELEASE, COPYR);
+    //if (f_flag > 0)
+    //    printf("\nCPU speed is %d MHz\n", f_flag);
+    //else
+    //    printf("\nCPU speed is unlimited\n");
 #ifdef	USR_COM
-    printf("\n%s Release %s, %s\n", USR_COM, USR_REL, USR_CPR);
+    //printf("\n%s Release %s, %s\n", USR_COM, USR_REL, USR_CPR);
 #endif
     fflush(stdout);
 
-    printf("Prep ram\n");
-    fflush(stdout);
+    //printf("Prep ram\n");
+    //fflush(stdout);
     wrk_ram	= PC = ram;
     STACK = ram + 0xffff;
     if (cpu == I8080)	/* the unused flag bits are documented for */
         F = 2;		/* the 8080, so start with bit 1 set */
     memset((char *)	ram, m_flag, 65536);
     // load binary
-    printf("Loading rom %s...\n",romPath);
+    //printf("Loading rom %s...\n",romPath);
     fflush(stdout);
     FILE* romFile = fopen(romPath,"rb");
     if (!romFile) {
@@ -92,7 +116,7 @@ void Vt100Sim::init() {
         return;
     }
     uint32_t count = fread((char*)ram,1,2048*4,romFile);
-    printf("Read ROM file; %u bytes\n",count);
+    //printf("Read ROM file; %u bytes\n",count);
     fclose(romFile);
     int_on();
     // add local io hooks
@@ -120,7 +144,7 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
         //printf(" IN PORT %02x -- %02x\n",addr,flags);fflush(stdout);
         return flags;
     } else {
-        printf(" IN PORT %02x at %04lx\n",addr,PC-ram);fflush(stdout);
+      //printf(" IN PORT %02x at %04lx\n",addr,PC-ram);fflush(stdout);
     }
     return 0;
 }
@@ -138,7 +162,7 @@ void Vt100Sim::ioOut(BYTE addr, BYTE data) {
         nvr.set_latch(data);
         break;
     default:
-        printf("OUT PORT %02x <- %02x\n",addr,data);fflush(stdout);
+      //printf("OUT PORT %02x <- %02x\n",addr,data);fflush(stdout);
         break;
     }
 }
@@ -164,7 +188,8 @@ void Vt100Sim::step()
       int_data &= 0xe7;
     }
   }
-  printf("Current PC is %04x\n",(unsigned int)(PC-ram)); fflush(stdout);
+  dispRegisters();
+  dispMemory();
 }
 
 void Vt100Sim::keypress(uint8_t keycode)
@@ -172,6 +197,32 @@ void Vt100Sim::keypress(uint8_t keycode)
     kbd.keypress(keycode);
 }
 
+void Vt100Sim::dispRegisters() {
+  mvwprintw(regWin,1,1,"A %02x",A);
+  mvwprintw(regWin,2,1,"B %02x C %02x",B,C);
+  mvwprintw(regWin,3,1,"D %02x E %02x",D,E);
+  mvwprintw(regWin,4,1,"H %02x L %02x",H,L);
+  mvwprintw(regWin,5,1,"PC %04x",(PC-ram));
+  mvwprintw(regWin,6,1,"SP %04x",(STACK-ram));
+  wrefresh(regWin);
+}
+
+void Vt100Sim::dispVideo() {
+}
+
+void Vt100Sim::dispLEDs(uint8_t leds) {
+}
+
+void Vt100Sim::dispMemory() {
+  int my,mx;
+  getmaxyx(memWin,my,mx);
+  uint16_t start = 0x2000;
+  for (int y = 1; y < my - 1; y++) {
+    mvwprintw(memWin,y,1,"%04x: ",start);
+    start += 32;
+  }
+  wrefresh(memWin);
+}
 
 extern "C" {
 BYTE io_in(BYTE addr);

@@ -12,7 +12,8 @@ extern "C" {
 class Vt100Sim
 {
 public:
-    Vt100Sim(char* romPath = 0);
+  Vt100Sim(char* romPath = 0,bool color=true);
+  ~Vt100Sim();
     void init();
     BYTE ioIn(BYTE addr);
     void ioOut(BYTE addr, BYTE data);
@@ -23,6 +24,14 @@ private:
 public:
     void step();
     void keypress(uint8_t keycode);
+
+public:
+    void dispRegisters();
+    void dispVideo();
+    void dispLEDs(uint8_t status);
+  void dispMemory();
+private:
+  
 };
 
 extern Vt100Sim* sim;

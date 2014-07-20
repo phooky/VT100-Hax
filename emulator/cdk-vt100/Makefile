@@ -8,7 +8,7 @@ OBJS=main.o nvr.o keyboard.o vt100sim.o \
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	g++ -o $(TARGET) $^ -lcdk -lncurses
+	g++ -o $(TARGET) $^ -lncurses
 
 clean:
 	rm $(OBJS) $(TARGET)
