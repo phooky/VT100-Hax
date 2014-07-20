@@ -33,7 +33,7 @@ void Keyboard::set_status(uint8_t status)
 void Keyboard::keypress(uint8_t keycode)
 {
   //printf("PRESS %02x\n",keycode);fflush(stdout);
-    keys.push_back(keycode);
+    keys.insert(keycode);
 }
 
 bool Keyboard::clock(bool rising)
@@ -46,7 +46,6 @@ bool Keyboard::clock(bool rising)
         if (clocks_until_next == 0) {
             scan = keys;
             keys.clear();
-            scan.sort();
             scan_iter = scan.begin();
             state = KBD_RESPONDING;
             clocks_until_next = 160;
@@ -63,6 +62,11 @@ bool Keyboard::clock(bool rising)
 	      //printf("SENDING KEY %02x\n",*scan_iter);fflush(stdout);
                 clocks_until_next = 160;
                 latch = *scan_iter;
+		if (latch != last_sent) {
+		  // hack around debounce problem
+		  keys.insert(latch);
+		  last_sent = latch;
+		}
                 scan_iter++;
             } else {
                 latch = 0x7f;

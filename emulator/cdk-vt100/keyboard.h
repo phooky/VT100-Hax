@@ -2,7 +2,7 @@
 #define KEYBOARD_H
 
 #include <stdint.h>
-#include <list>
+#include <set>
 
 typedef enum {
     KBD_IDLE =0,
@@ -20,10 +20,11 @@ private:
     KbdState state;
     uint8_t latch;
     bool tx_buf_empty;
-    std::list<uint8_t> keys;
-    std::list<uint8_t> scan;
-    std::list<uint8_t>::iterator scan_iter;
+    std::set<uint8_t> keys;
+    std::set<uint8_t> scan;
+    std::set<uint8_t>::iterator scan_iter;
     uint32_t clocks_until_next;
+    uint8_t last_sent;
 public:
     void set_status(uint8_t status);
     void keypress(uint8_t keycode);
