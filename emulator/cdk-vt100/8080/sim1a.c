@@ -31,6 +31,9 @@
  * 04-JUN-14 Release 1.23 added 8080 emulation
  */
 
+#include <ncurses.h>
+extern WINDOW* msgWin;
+
 #include <unistd.h>
 #include <stdio.h>
 #include <time.h>
@@ -433,8 +436,11 @@ void cpu_8080(void)
 
 #ifdef WANT_INT		/* CPU interrupt handling */
 		if (int_int) {
-			if (IFF != 3)
+		  //wprintw(msgWin,"INT INT %02x\n",int_data);wrefresh(msgWin);
+		  if (IFF != 3) {
+		    //wprintw(msgWin,"IFF not 3 %02x\n",IFF);wrefresh(msgWin);
 				goto leave;
+		  }
 			if (int_protection) { /* protect first instr */
 				int_protection = 0; /* after EI */
 				goto leave;

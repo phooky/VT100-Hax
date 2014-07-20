@@ -1,5 +1,6 @@
 #include "nvr.h"
 #include <stdio.h>
+#include <ncurses.h>
 
 typedef enum {
     STANDBY = 0b111,
@@ -12,6 +13,7 @@ typedef enum {
     UNUSED = 0b011
 } Commands;
 
+extern WINDOW* msgWin;
 
 NVR::NVR() : address_reg(0xffff), data_reg(0), latch_last(STANDBY << 1)
 {
@@ -62,14 +64,14 @@ void NVR::clock(bool rising) {
     {
         uint8_t addr = compute_addr(address_reg);
         contents[addr] = data_reg & 0x3fff;
-        printf("NVR write %x <- %x\n",addr,data_reg);fflush(stdout);
+        wprintw(msgWin,"NVR write %x <- %x\n",addr,data_reg);wrefresh(msgWin);
     }
         break;
     case READ:
     {
         uint8_t addr = compute_addr(address_reg);
         data_reg = contents[addr];
-        printf("NVR read  %x -> %x\n",addr,data_reg);fflush(stdout);
+        wprintw(msgWin,"NVR read  %x -> %x\n",addr,data_reg);wrefresh(msgWin);
     }
         break;
     case SHIFT_OUT:

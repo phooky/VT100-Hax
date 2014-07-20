@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <ncurses.h>
+#include <time.h>
+#include <signal.h>
+#include <map>
 
 extern "C" {
 extern void int_on(void), int_off(void);
@@ -24,25 +27,44 @@ Vt100Sim* sim;
 
 WINDOW* regWin;
 WINDOW* memWin;
+WINDOW* vidWin;
+WINDOW* msgWin;
 
-Vt100Sim::Vt100Sim(char* romPath, bool color)
+Vt100Sim::Vt100Sim(char* romPath, bool color) : running(true), inputMode(false),
+						dc11(false), dc12(false)
 {
+  this->romPath = romPath;
+
+  breakpoints.insert(8);
+  breakpoints.insert(10);
   initscr();
   int my,mx;
   getmaxyx(stdscr,my,mx);
   if (color) { start_color(); }
   cbreak();
-    this->romPath = romPath;
-    curs_set(0);
-    regWin = subwin(stdscr,8,12,0,0);
-    memWin = subwin(stdscr,8,mx-12,0,12);
-    box(regWin,0,0);
-    box(memWin,0,0);
-    init_pair(1,COLOR_RED,COLOR_BLACK);
-    init_pair(2,COLOR_BLUE,COLOR_BLACK);
-    wattron(regWin,COLOR_PAIR(1));
-    wattron(memWin,COLOR_PAIR(2));
-    refresh();
+  noecho();
+  nodelay(stdscr,1);
+  curs_set(0);
+  
+  int vht = std::min(27,my-12);
+  int memw = 7 + 32*3 + 2;
+  int msgw = mx - (12+memw);
+  vidWin = subwin(stdscr,vht,mx,my-vht,0);
+  regWin = subwin(stdscr,8,12,0,0);
+  memWin = subwin(stdscr,my-vht,memw,0,12);
+  msgWin = subwin(stdscr,my-vht,msgw,0,12+memw);
+  scrollok(msgWin,1);
+  box(regWin,0,0);
+  mvwprintw(regWin,0,1,"Registers");
+  box(memWin,0,0);
+  mvwprintw(memWin,0,1,"Memory");
+  box(vidWin,0,0);
+  mvwprintw(vidWin,0,1,"Video");
+  init_pair(1,COLOR_RED,COLOR_BLACK);
+  init_pair(2,COLOR_BLUE,COLOR_BLACK);
+  wattron(regWin,COLOR_PAIR(1));
+  wattron(memWin,COLOR_PAIR(2));
+  refresh();
 }
 
 Vt100Sim::~Vt100Sim() {
@@ -89,15 +111,14 @@ void Vt100Sim::init() {
     m_flag = 0;
     tmax = f_flag*10000;
     cpu = I8080;
-    //printf("\nRelease %s, %s\n", RELEASE, COPYR);
-    //if (f_flag > 0)
-    //    printf("\nCPU speed is %d MHz\n", f_flag);
-    //else
-    //    printf("\nCPU speed is unlimited\n");
+    wprintw(msgWin,"\nRelease %s, %s\n", RELEASE, COPYR);
+    if (f_flag > 0)
+      wprintw(msgWin,"\nCPU speed is %d MHz\n", f_flag);
+    else
+      wprintw(msgWin,"\nCPU speed is unlimited\n");
 #ifdef	USR_COM
-    //printf("\n%s Release %s, %s\n", USR_COM, USR_REL, USR_CPR);
+    wprintw(msgWin,"\n%s Release %s, %s\n", USR_COM, USR_REL, USR_CPR);
 #endif
-    fflush(stdout);
 
     //printf("Prep ram\n");
     //fflush(stdout);
@@ -107,12 +128,12 @@ void Vt100Sim::init() {
         F = 2;		/* the 8080, so start with bit 1 set */
     memset((char *)	ram, m_flag, 65536);
     // load binary
-    //printf("Loading rom %s...\n",romPath);
-    fflush(stdout);
+    wprintw(msgWin,"Loading rom %s...\n",romPath);
+    wrefresh(msgWin);
     FILE* romFile = fopen(romPath,"rb");
     if (!romFile) {
-        printf("Failed to read rom file\n");
-        fflush(stdout);
+      wprintw(msgWin,"Failed to read rom file\n");
+      wrefresh(msgWin);
         return;
     }
     uint32_t count = fread((char*)ram,1,2048*4,romFile);
@@ -120,7 +141,7 @@ void Vt100Sim::init() {
     fclose(romFile);
     int_on();
     // add local io hooks
-
+    
     i_flag = 0;
 
     // We are always running the CPU in single-step mode so we can do the clock toggles when necessary.
@@ -143,6 +164,8 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
         }
         //printf(" IN PORT %02x -- %02x\n",addr,flags);fflush(stdout);
         return flags;
+    } else if (addr == 0x82) {
+      return kbd.get_latch();
     } else {
       //printf(" IN PORT %02x at %04lx\n",addr,PC-ram);fflush(stdout);
     }
@@ -152,49 +175,137 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
 void Vt100Sim::ioOut(BYTE addr, BYTE data) {
     switch(addr) {
     case 0x82:
-        //printf("OUT PORT %02x <- %02x\n",addr,data);
-        //fflush(stdout);
         kbd.set_status(data);
         break;
     case 0x62:
-        //printf("NVRAM %02x\n",data);
-        //fflush(stdout);
         nvr.set_latch(data);
+    case 0xa2:
+      //wprintw(msgWin,"DC11 %02x\n",data);
+      //wrefresh(msgWin);
+      dc11 = true;
+    case 0xc2:
+      //wprintw(msgWin,"DC12 %02x\n",data);
+      //wrefresh(msgWin);
+      dc12 = true;
         break;
+
     default:
       //printf("OUT PORT %02x <- %02x\n",addr,data);fflush(stdout);
         break;
     }
 }
 
+volatile sig_atomic_t sigAlrm = 0;
+
+std::map<int,uint8_t> make_code_map() {
+  std::map<int,uint8_t> m;
+  m['a'] = 0x4a; m['A'] = 0x4a;
+  // setup
+  m['`'] = 0x7b; m['~'] = 0x7b;
+  return m;
+}
+
+std::map<int,uint8_t> code = make_code_map();
+
+void sig_alrm(int signo) { sigAlrm = 1; }
+
+void Vt100Sim::run() {
+  signal(SIGALRM,sig_alrm);
+  ualarm(5000,5000);
+  int steps = 0;
+  needsUpdate = true;
+  while(1) {
+    if (running) {
+      step();
+      if (steps > 0) {
+	if (--steps == 0) { running = false; }
+      }
+      uint16_t pc = (uint16_t)(PC-ram);
+      if (breakpoints.count(pc)) {
+	wprintw(msgWin,"BP PC %d\n",pc);
+
+	running = false;
+      }
+    } else {
+      usleep(5000);
+    }
+    if (sigAlrm && needsUpdate) { sigAlrm = 0; update();}
+    int ch = getch();
+    if (ch != ERR) {
+      if (ch == 'q' || ch == 'Q') {
+	return;
+      }
+      else if (ch == ' ') {
+	running = !running;
+      }
+      else if (ch == 'n') {
+	running = true; steps = 1;
+      }
+      else if (ch == 'b' || ch == 'B') {
+	// set up breakpoints
+      }
+      else {
+	keypress(code[ch]);
+      }
+    }
+  }
+}
+
 void Vt100Sim::step()
 {
   const uint32_t start = t_ticks;
   cpu_error = NONE;
+  //  if ((int_int == 1) && (int_data == 0xcf)) {
+    //wprintw(msgWin,"***KEYBOARD GO!!!\n");
+  //  }
   cpu_8080();
-  int_data = 0xff;
+  if (int_int == 0) { int_data = 0xff; }
   const uint16_t t = t_ticks - start;
-  if (lba4.add_ticks(t)) {
+  if (dc11 && lba4.add_ticks(t)) {
     if (kbd.clock(lba4.get_value())) {
       int_data &= 0xcf;
       int_int = 1;
+      //wprintw(msgWin,"KBD interrupt\n");wrefresh(msgWin);
     }
   }
-  if (lba7.add_ticks(t)) {
+  if (dc11 && lba7.add_ticks(t)) {
     nvr.clock(lba7.get_value());
   }
-  if (vertical.add_ticks(t)) {
+  if (dc11 && vertical.add_ticks(t)) {
     if (vertical.get_value()) {
       int_data &= 0xe7;
+      int_int = 1;
     }
   }
+  needsUpdate = true;
+}
+
+void Vt100Sim::update() {
+  needsUpdate = false;
   dispRegisters();
   dispMemory();
+  dispVideo();
 }
 
 void Vt100Sim::keypress(uint8_t keycode)
 {
+  wprintw(msgWin,"Keycode %x\n",keycode); wrefresh(msgWin);
     kbd.keypress(keycode);
+}
+
+void Vt100Sim::clearBP(uint16_t bp)
+{
+  breakpoints.erase(bp);
+}
+
+void Vt100Sim::addBP(uint16_t bp)
+{
+  breakpoints.insert(bp);
+}
+
+void Vt100Sim::clearAllBPs()
+{
+  breakpoints.clear();
 }
 
 void Vt100Sim::dispRegisters() {
@@ -208,6 +319,34 @@ void Vt100Sim::dispRegisters() {
 }
 
 void Vt100Sim::dispVideo() {
+  uint16_t start = 0x2000;
+  box(vidWin,0,0);
+  for (uint8_t i = 1; i < 100; i++) {
+    wmove(vidWin,i,1);
+        char* p = (char*)ram + start;
+        char* maxp = p + 132;
+        while (*p != 0x7f && p != maxp) {
+            unsigned char c = *(p++);
+            if (c != 0) {
+	      waddch(vidWin,c);
+	    } else {
+	      waddch(vidWin,' ');
+            }
+        }
+        if (p == maxp) {
+	  wprintw(msgWin,"Overflow line %d\n",i); wrefresh(msgWin);
+	  break;
+	}
+        // at terminator
+        p++;
+        unsigned char a1 = *(p++);
+        unsigned char a2 = *(p++);
+        //printf("Next: %02x %02x\n",a1,a2);fflush(stdout);
+        uint16_t next = (((a1&0x10)!=0)?0x2000:0x4000) | ((a1&0x0f)<<8) | a2;
+        if (start == next) break;
+        start = next;
+    }
+  wrefresh(vidWin);
 }
 
 void Vt100Sim::dispLEDs(uint8_t leds) {
@@ -216,10 +355,15 @@ void Vt100Sim::dispLEDs(uint8_t leds) {
 void Vt100Sim::dispMemory() {
   int my,mx;
   getmaxyx(memWin,my,mx);
+  int bavail = (mx - 7)/3;
+  int bdisp = 8;
+  while (bdisp*2 <= bavail) bdisp*=2;
   uint16_t start = 0x2000;
   for (int y = 1; y < my - 1; y++) {
-    mvwprintw(memWin,y,1,"%04x: ",start);
-    start += 32;
+    mvwprintw(memWin,y,1,"%04x:",start);
+    for (int b = 0; b<bdisp;b++) {
+      wprintw(memWin," %02x",ram[start++]);
+    }
   }
   wrefresh(memWin);
 }
