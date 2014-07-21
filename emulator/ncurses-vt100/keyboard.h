@@ -19,6 +19,7 @@ public:
 private:
     KbdState state;
     uint8_t latch;
+    uint8_t last_status;
     bool tx_buf_empty;
     std::set<uint8_t> keys;
     std::set<uint8_t> scan;
@@ -27,6 +28,7 @@ private:
     uint8_t last_sent;
 public:
     void set_status(uint8_t status);
+    uint8_t get_status() { return last_status; }
     void keypress(uint8_t keycode);
     // Gets a clock for LBA4
     bool clock(bool rising); // return true if an interrupt is generated

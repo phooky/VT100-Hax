@@ -20,6 +20,7 @@ extern WINDOW* msgWin;
 
 void Keyboard::set_status(uint8_t status)
 {
+  last_status = status;
     //printf("Got kbd status %02x at %04x\n",status,PC-ram); fflush(stdout);
     if ((status & (1<<6)) &&  state == KBD_IDLE) {
         //printf("SCAN START\n");fflush(stdout);

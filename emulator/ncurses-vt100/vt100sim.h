@@ -27,6 +27,7 @@ private:
   bool needsUpdate;
   std::set<uint16_t> breakpoints;
   bool dc11, dc12;
+  bool controlMode;
 public:
   void step();
   void run();
@@ -37,7 +38,8 @@ public:
 public:
     void dispRegisters();
     void dispVideo();
-    void dispLEDs(uint8_t status);
+    void dispLEDs();
+    void dispStatus();
   void dispMemory();
   void update();
 private:

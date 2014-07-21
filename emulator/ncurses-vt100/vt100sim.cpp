@@ -30,14 +30,16 @@ WINDOW* regWin;
 WINDOW* memWin;
 WINDOW* vidWin;
 WINDOW* msgWin;
+WINDOW* statusBar;
+WINDOW* bpWin;
 
 Vt100Sim::Vt100Sim(char* romPath, bool color) : running(true), inputMode(false),
-						dc11(false), dc12(false)
+						dc11(false), dc12(false), controlMode(true)
 {
   this->romPath = romPath;
 
-  breakpoints.insert(8);
-  breakpoints.insert(10);
+  //breakpoints.insert(8);
+  //breakpoints.insert(0xb);
   initscr();
   int my,mx;
   getmaxyx(stdscr,my,mx);
@@ -47,7 +49,8 @@ Vt100Sim::Vt100Sim(char* romPath, bool color) : running(true), inputMode(false),
   keypad(stdscr,1);
   nodelay(stdscr,1);
   curs_set(0);
-  
+
+  statusBar = subwin(stdscr,1,mx,--my,0);
   int vht = std::min(27,my-12);
   int memw = 7 + 32*3 + 2;
   int msgw = mx - (12+memw);
@@ -294,7 +297,8 @@ void Vt100Sim::run() {
 	if (--steps == 0) { running = false; }
       }
       uint16_t pc = (uint16_t)(PC-ram);
-      if (breakpoints.count(pc)) {
+      //wprintw(msgWin,"BP %d PC %d\n",breakpoints.size(),pc);wrefresh(msgWin);
+      if (breakpoints.find(pc) != breakpoints.end()) {
 	wprintw(msgWin,"BP PC %d\n",pc);
 
 	running = false;
@@ -355,6 +359,7 @@ void Vt100Sim::update() {
   dispRegisters();
   dispMemory();
   dispVideo();
+  dispLEDs();
 }
 
 void Vt100Sim::keypress(uint8_t keycode)
@@ -433,7 +438,36 @@ void Vt100Sim::dispVideo() {
   wrefresh(vidWin);
 }
 
-void Vt100Sim::dispLEDs(uint8_t leds) {
+void displayFlag(const char* text, bool on) {
+  if (on) {
+    wattron(statusBar,COLOR_PAIR(2));
+    wattron(statusBar,A_BOLD);
+  } else {
+    wattron(statusBar,COLOR_PAIR(1));
+    wattroff(statusBar,A_BOLD);
+  }
+  wprintw(statusBar,text);
+  waddch(statusBar,' ');
+  waddch(statusBar,' ');
+}
+
+void Vt100Sim::dispLEDs() {
+  // ONLINE LOCAL KBD LOCK L1 L2 L3 L4
+  const static char* ledNames[] = { 
+    "ONLINE", "LOCAL", "KBD LOCK", "L1", "L2", "L3", "L4" };
+  const int width = 8 + 7 + 10 + 4 + 4 + 4 + 4;
+  int mx, my;
+  getmaxyx(statusBar,my,mx);
+  wmove(statusBar,0,mx-width);
+  uint8_t flags = kbd.get_status();
+  displayFlag(ledNames[0], (flags & (1<<5)) != 0 );
+  displayFlag(ledNames[1], (flags & (1<<5)) == 0 );
+  displayFlag(ledNames[2], (flags & (1<<4)) != 0 );
+  displayFlag(ledNames[3], (flags & (1<<3)) != 0 );
+  displayFlag(ledNames[4], (flags & (1<<2)) != 0 );
+  displayFlag(ledNames[5], (flags & (1<<1)) != 0 );
+  displayFlag(ledNames[6], (flags & (1<<0)) != 0 );
+  wrefresh(statusBar);
 }
 
 void Vt100Sim::dispMemory() {
