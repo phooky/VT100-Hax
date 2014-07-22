@@ -339,7 +339,7 @@ void Vt100Sim::run() {
 	controlMode = !controlMode;
 	dispStatus();
       } else if (controlMode) {
-	if (ch == 'q' || ch == 'Q') {
+	if (ch == 'q') {
 	  return;
 	}
 	else if (ch == ' ') {
@@ -348,7 +348,10 @@ void Vt100Sim::run() {
 	else if (ch == 'n') {
 	  running = true; steps = 1;
 	}
-	else if (ch == 'b' || ch == 'B') {
+	else if (ch == 'm') {
+	  snapMemory(); dispMemory();
+	}
+	else if (ch == 'b') {
 	  char bpbuf[10];
 	  getString("Addr. of breakpoint: ",bpbuf,4);
 	  werase(statusBar);
@@ -363,7 +366,7 @@ void Vt100Sim::run() {
 	  }
 	  // set up breakpoints
 	}
-	else if (ch == 'd' || ch == 'D') {
+	else if (ch == 'd') {
 	  char bpbuf[10];
 	  getString("Addr. of bp to remove: ",bpbuf,4);
 	  werase(statusBar);
@@ -583,6 +586,10 @@ void Vt100Sim::dispBPs() {
   wrefresh(bpWin);
 }
 
+void Vt100Sim::snapMemory() {
+  //memcpy(backing,ram+0x2000,backing_count);
+}
+
 void Vt100Sim::dispMemory() {
   int my,mx;
   getmaxyx(memWin,my,mx);
@@ -590,10 +597,18 @@ void Vt100Sim::dispMemory() {
   int bdisp = 8;
   while (bdisp*2 <= bavail) bdisp*=2;
   uint16_t start = 0x2000;
+
   for (int y = 1; y < my - 1; y++) {
+    wattrset(memWin,COLOR_PAIR(1));
     mvwprintw(memWin,y,1,"%04x:",start);
     for (int b = 0; b<bdisp;b++) {
-      wprintw(memWin," %02x",ram[start++]);
+      if (ram[start] != 00) {
+	wattrset(memWin,COLOR_PAIR(2));
+	wprintw(memWin," %02x",ram[start++]);
+	wattrset(memWin,COLOR_PAIR(1));
+      } else {
+	wprintw(memWin," %02x",ram[start++]);
+      }
     }
   }
   wrefresh(memWin);

@@ -43,6 +43,7 @@ public:
     void dispStatus();
     void dispBPs();
   void dispMemory();
+    void snapMemory();
   void update();
 private:
   
