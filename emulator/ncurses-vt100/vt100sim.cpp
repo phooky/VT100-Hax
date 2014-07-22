@@ -359,7 +359,7 @@ void Vt100Sim::update() {
   dispRegisters();
   dispMemory();
   dispVideo();
-  dispLEDs();
+  dispStatus();
 }
 
 void Vt100Sim::keypress(uint8_t keycode)
@@ -451,14 +451,14 @@ void displayFlag(const char* text, bool on) {
   waddch(statusBar,' ');
 }
 
-void Vt100Sim::dispLEDs() {
+void Vt100Sim::dispStatus() {
   // ONLINE LOCAL KBD LOCK L1 L2 L3 L4
   const static char* ledNames[] = { 
     "ONLINE", "LOCAL", "KBD LOCK", "L1", "L2", "L3", "L4" };
-  const int width = 8 + 7 + 10 + 4 + 4 + 4 + 4;
+  const int lwidth = 8 + 7 + 10 + 4 + 4 + 4 + 4;
   int mx, my;
   getmaxyx(statusBar,my,mx);
-  wmove(statusBar,0,mx-width);
+  wmove(statusBar,0,mx-lwidth);
   uint8_t flags = kbd.get_status();
   displayFlag(ledNames[0], (flags & (1<<5)) != 0 );
   displayFlag(ledNames[1], (flags & (1<<5)) == 0 );
@@ -467,6 +467,11 @@ void Vt100Sim::dispLEDs() {
   displayFlag(ledNames[4], (flags & (1<<2)) != 0 );
   displayFlag(ledNames[5], (flags & (1<<1)) != 0 );
   displayFlag(ledNames[6], (flags & (1<<0)) != 0 );
+
+  // Mode information
+  wmove(statusBar,0,mx/2);
+  wattrset(statusBar,A_BOLD);
+  wprintw(statusBar,"| %s | %s |",controlMode?"CONTROL":"TYPING ",running?"RUNNING":"STOPPED");
   wrefresh(statusBar);
 }
 
