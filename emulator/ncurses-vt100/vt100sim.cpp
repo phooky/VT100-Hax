@@ -50,14 +50,20 @@ Vt100Sim::Vt100Sim(char* romPath, bool color) : running(true), inputMode(false),
   nodelay(stdscr,1);
   curs_set(0);
 
+  // Status bar: bottom line of the screen
   statusBar = subwin(stdscr,1,mx,--my,0);
-  int vht = std::min(27,my-12);
-  int memw = 7 + 32*3 + 2;
-  int msgw = mx - (12+memw);
+  const int vht = std::min(27,my-12); // video area height (max 27 rows)
+  const int memw = 7 + 32*3 + 2; // memory area width: big enough for 32B across
+  const int regw = 12;
+  const int regh = 8;
+  const int msgw = mx - (regw+memw); // message area: mx - memory area - register area (12)
+
   vidWin = subwin(stdscr,vht,mx,my-vht,0);
-  regWin = subwin(stdscr,8,12,0,0);
-  memWin = subwin(stdscr,my-vht,memw,0,12);
-  msgWin = subwin(stdscr,my-vht,msgw,0,12+memw);
+  regWin = subwin(stdscr,regh,regw,0,0);
+  bpWin = subwin(stdscr,my-(vht+regh),regw,regh,0);
+  memWin = subwin(stdscr,my-vht,memw,0,regw);
+  msgWin = subwin(stdscr,my-vht,msgw,0,regw+memw);
+
   scrollok(msgWin,1);
   box(regWin,0,0);
   mvwprintw(regWin,0,1,"Registers");
@@ -65,6 +71,8 @@ Vt100Sim::Vt100Sim(char* romPath, bool color) : running(true), inputMode(false),
   mvwprintw(memWin,0,1,"Memory");
   box(vidWin,0,0);
   mvwprintw(vidWin,0,1,"Video");
+  box(bpWin,0,0);
+  mvwprintw(bpWin,0,1,"Brkpts");
   init_pair(1,COLOR_RED,COLOR_BLACK);
   init_pair(2,COLOR_BLUE,COLOR_BLACK);
   wattron(regWin,COLOR_PAIR(1));
@@ -215,61 +223,61 @@ std::map<int,uint8_t> make_code_map() {
   m['q'] = 0x0a;
 
   m[KEY_RIGHT] = 0x10;
-  m[']'] = 0x14; m['}'] = 0x14;
-  m['['] = 0x15; m['{'] = 0x15;
+  m[']'] = 0x14; m['}'] = 0x94;
+  m['['] = 0x15; m['{'] = 0x95;
   m['i'] = 0x16;
   m['u'] = 0x17;
   m['r'] = 0x18;
   m['e'] = 0x19;
-  m['1'] = 0x1a; m['!'] = 0x1a;
+  m['1'] = 0x1a; m['!'] = 0x9a;
 
   m[KEY_LEFT] = 0x20;
   m[KEY_DOWN] = 0x22;
   m[KEY_BREAK] = 0x23;
-  m['`'] = 0x24; m['~'] = 0x24;
-  m['-'] = 0x25; m['_'] = 0x25;
-  m['9'] = 0x26; m['('] = 0x26;
-  m['7'] = 0x27; m['&'] = 0x27;
-  m['4'] = 0x28; m['$'] = 0x28;
-  m['3'] = 0x29; m['#'] = 0x29;
+  m['`'] = 0x24; m['~'] = 0xa4;
+  m['-'] = 0x25; m['_'] = 0xa5;
+  m['9'] = 0x26; m['('] = 0xa6;
+  m['7'] = 0x27; m['&'] = 0xa7;
+  m['4'] = 0x28; m['$'] = 0xa8;
+  m['3'] = 0x29; m['#'] = 0xa9;
   m[KEY_CANCEL] = 0x2a;
 
   m[KEY_UP] = 0x30;
   m[KEY_F(3)] = 0x31;
   m[KEY_F(1)] = 0x32;
   m[KEY_BACKSPACE] = 0x33;
-  m['='] = 0x34; m['+'] = 0x34;
-  m['0'] = 0x35; m[')'] = 0x35;
-  m['8'] = 0x36; m['*'] = 0x36;
-  m['6'] = 0x37; m['^'] = 0x37;
-  m['5'] = 0x38; m['%'] = 0x38;
-  m['2'] = 0x39; m['@'] = 0x39;
+  m['='] = 0x34; m['+'] = 0xb4;
+  m['0'] = 0x35; m[')'] = 0xb5;
+  m['8'] = 0x36; m['*'] = 0xb6;
+  m['6'] = 0x37; m['^'] = 0xb7;
+  m['5'] = 0x38; m['%'] = 0xb8;
+  m['2'] = 0x39; m['@'] = 0xb9;
   m['\t'] = 0x3a;
 
   m[KEY_F(4)] = 0x41;
   m[KEY_F(2)] = 0x42;
   m['\n'] = 0x44;
-  m['\\'] = 0x45; m['|'] = 0x45;
+  m['\\'] = 0x45; m['|'] = 0xc5;
   m['l'] = 0x46;
   m['k'] = 0x47;
   m['g'] = 0x48;
   m['f'] = 0x49;
   m['a'] = 0x4a;
 
-  m['\''] = 0x55; m['"'] = 0x55;
-  m[';'] = 0x56; m[':'] = 0x56;
+  m['\''] = 0x55; m['"'] = 0xd5;
+  m[';'] = 0x56; m[':'] = 0xd6;
   m['j'] = 0x57;
   m['h'] = 0x58;
   m['d'] = 0x59;
   m['s'] = 0x5a;
 
-  m['.'] = 0x65; m['>'] = 0x65;
-  m[','] = 0x66; m['<'] = 0x66;
+  m['.'] = 0x65; m['>'] = 0xe5;
+  m[','] = 0x66; m['<'] = 0xe6;
   m['n'] = 0x67;
   m['b'] = 0x68;
   m['x'] = 0x69;
 
-  m['/'] = 0x75; m['?'] = 0x55;
+  m['/'] = 0x75; m['?'] = 0xf5;
   m['m'] = 0x76;
   m[' '] = 0x77;
   m['v'] = 0x78;
@@ -278,6 +286,10 @@ std::map<int,uint8_t> make_code_map() {
   
   // setup
   m['`'] = 0x7b; m['~'] = 0x7b;
+
+  for (int i = 0; i < 26; i++) {
+    m['A'+i] = m['a'+i] | 0x80;
+  }
   return m;
 }
 
@@ -326,7 +338,12 @@ void Vt100Sim::run() {
 	}
       }
       else {
-	keypress(code[tolower(ch)]);
+	uint8_t kc = code[ch];
+	if (kc & 0x80) {
+	  keypress(0x7d);
+	  kc &= 0x7f;
+	}
+	keypress(kc);
       }
     }
   }
