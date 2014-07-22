@@ -310,11 +310,11 @@ void Vt100Sim::run() {
       }
       uint16_t pc = (uint16_t)(PC-ram);
       //wprintw(msgWin,"BP %d PC %d\n",breakpoints.size(),pc);wrefresh(msgWin);
-      if (breakpoints.find(pc) != breakpoints.end()) {
-	wprintw(msgWin,"BP PC %d\n",pc);
+      //if (breakpoints.find(pc) != breakpoints.end()) {
+      //wprintw(msgWin,"BP PC %d\n",pc);
 
-	running = false;
-      }
+      //running = false;
+      //}
     } else {
       usleep(5000);
     }

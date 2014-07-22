@@ -45,7 +45,10 @@ bool Keyboard::clock(bool rising)
         break;
     case KBD_SENDING:
         if (clocks_until_next == 0) {
-            scan = keys;
+	  scan = last_sent;
+		// hack around debounce problem
+	  last_sent = keys;
+	  scan.insert(keys.begin(),keys.end());
             keys.clear();
             scan_iter = scan.begin();
             state = KBD_RESPONDING;
@@ -63,11 +66,6 @@ bool Keyboard::clock(bool rising)
 	      //printf("SENDING KEY %02x\n",*scan_iter);fflush(stdout);
                 clocks_until_next = 160;
                 latch = *scan_iter;
-		if (latch != last_sent) {
-		  // hack around debounce problem
-		  keys.insert(latch);
-		  last_sent = latch;
-		}
                 scan_iter++;
             } else {
                 latch = 0x7f;

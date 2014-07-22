@@ -25,7 +25,7 @@ private:
     std::set<uint8_t> scan;
     std::set<uint8_t>::iterator scan_iter;
     uint32_t clocks_until_next;
-    uint8_t last_sent;
+    std::set<uint8_t> last_sent;
 public:
     void set_status(uint8_t status);
     uint8_t get_status() { return last_status; }
