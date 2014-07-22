@@ -309,17 +309,21 @@ void Vt100Sim::run() {
     if (sigAlrm && needsUpdate) { sigAlrm = 0; update();}
     int ch = getch();
     if (ch != ERR) {
-      if (ch == 'q' || ch == 'Q') {
-	return;
-      }
-      else if (ch == ' ') {
-	running = !running;
-      }
-      else if (ch == 'n') {
-	running = true; steps = 1;
-      }
-      else if (ch == 'b' || ch == 'B') {
-	// set up breakpoints
+      if (ch == KEY_F(2)) {
+	controlMode = !controlMode;
+      } else if (controlMode) {
+	if (ch == 'q' || ch == 'Q') {
+	  return;
+	}
+	else if (ch == ' ') {
+	  running = !running;
+	}
+	else if (ch == 'n') {
+	  running = true; steps = 1;
+	}
+	else if (ch == 'b' || ch == 'B') {
+	  // set up breakpoints
+	}
       }
       else {
 	keypress(code[tolower(ch)]);
