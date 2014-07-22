@@ -297,6 +297,22 @@ std::map<int,uint8_t> code = make_code_map();
 
 void sig_alrm(int signo) { sigAlrm = 1; }
 
+bool hexParse(char* buf, int n, uint16_t& d) {
+  d = 0;
+  for (int i = 0; i < n; i++) {
+    char c = buf[i];
+    if (c == 0) return true;
+    d = d << 4;
+    if (c >= '0' && c <= '9') { d |= (c-'0'); }
+    else if (c >= 'a' && c <= 'f') { d |= ((c-'a')+10); }
+    else if (c >= 'A' && c <= 'F') { d |= ((c-'A')+10); }
+    else {
+      return false;
+    }
+  }
+  return true;
+}
+
 void Vt100Sim::run() {
   signal(SIGALRM,sig_alrm);
   ualarm(5000,5000);
@@ -310,11 +326,9 @@ void Vt100Sim::run() {
       }
       uint16_t pc = (uint16_t)(PC-ram);
       //wprintw(msgWin,"BP %d PC %d\n",breakpoints.size(),pc);wrefresh(msgWin);
-      //if (breakpoints.find(pc) != breakpoints.end()) {
-      //wprintw(msgWin,"BP PC %d\n",pc);
-
-      //running = false;
-      //}
+      if (breakpoints.find(pc) != breakpoints.end()) {
+	running = false;
+      }
     } else {
       usleep(5000);
     }
@@ -323,6 +337,7 @@ void Vt100Sim::run() {
     if (ch != ERR) {
       if (ch == KEY_F(2)) {
 	controlMode = !controlMode;
+	dispStatus();
       } else if (controlMode) {
 	if (ch == 'q' || ch == 'Q') {
 	  return;
@@ -334,6 +349,37 @@ void Vt100Sim::run() {
 	  running = true; steps = 1;
 	}
 	else if (ch == 'b' || ch == 'B') {
+	  char bpbuf[10];
+	  getString("Addr. of breakpoint: ",bpbuf,4);
+	  werase(statusBar);
+	  dispStatus();
+	  uint16_t bp;
+	  if (hexParse(bpbuf,4,bp)) {
+	    addBP(bp);
+	    dispBPs();
+	    mvwprintw(statusBar,0,0,"Breakpoint addded at %s\n",bpbuf); 
+	  } else {
+	    mvwprintw(statusBar,0,0,"Bad breakpoint %s\n",bpbuf); 
+	  }
+	  // set up breakpoints
+	}
+	else if (ch == 'd' || ch == 'D') {
+	  char bpbuf[10];
+	  getString("Addr. of bp to remove: ",bpbuf,4);
+	  werase(statusBar);
+	  dispStatus();
+	  uint16_t bp;
+	  if (hexParse(bpbuf,4,bp)) {
+	    if (breakpoints.count(bp) == 0) {
+	      mvwprintw(statusBar,0,0,"No breakpoint %s\n",bpbuf); 
+	    } else {
+	      clearBP(bp);
+	      dispBPs();
+	      mvwprintw(statusBar,0,0,"Breakpoint removed at %s\n",bpbuf); 
+	    }
+	  } else {
+	    mvwprintw(statusBar,0,0,"Bad breakpoint %s\n",bpbuf); 
+	  }
 	  // set up breakpoints
 	}
       }
@@ -347,6 +393,18 @@ void Vt100Sim::run() {
       }
     }
   }
+}
+
+void Vt100Sim::getString(const char* prompt, char* buf, uint8_t sz) {
+  uint8_t l = strlen(prompt);
+  mvwprintw(statusBar,0,0,prompt);
+  echo();
+  curs_set(1);
+  wgetnstr(statusBar,buf,sz);
+  noecho();
+  curs_set(0);
+  werase(statusBar);
+  dispStatus();
 }
 
 void Vt100Sim::step()
@@ -492,8 +550,37 @@ void Vt100Sim::dispStatus() {
   // Mode information
   wmove(statusBar,0,mx/2);
   wattrset(statusBar,A_BOLD);
-  wprintw(statusBar,"| %s | %s |",controlMode?"CONTROL":"TYPING ",running?"RUNNING":"STOPPED");
+  wprintw(statusBar,"| ");
+  if (controlMode) {
+    wprintw(statusBar,"CONTROL");
+  } else {
+    wattron(statusBar,A_REVERSE);
+    wprintw(statusBar,"TYPING");
+    wattroff(statusBar,A_REVERSE);
+    wprintw(statusBar," ");
+  }
+  wprintw(statusBar," | ");
+  if (running) {
+    wprintw(statusBar,"RUNNING");
+  } else {
+    wattron(statusBar,A_REVERSE);
+    wprintw(statusBar,"STOPPED");
+    wattroff(statusBar,A_REVERSE);
+  }
+  wprintw(statusBar," |");
   wrefresh(statusBar);
+}
+
+void Vt100Sim::dispBPs() {
+  int y = 1;
+  werase(bpWin);
+  mvwprintw(bpWin,0,1,"Brkpts");
+  for (std::set<uint16_t>::iterator i = breakpoints.begin();
+       i != breakpoints.end();
+       i++) {
+    mvwprintw(bpWin,y++,2,"%04x",*i);
+  }
+  wrefresh(bpWin);
 }
 
 void Vt100Sim::dispMemory() {

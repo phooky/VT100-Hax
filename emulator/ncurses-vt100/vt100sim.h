@@ -29,6 +29,7 @@ private:
   bool dc11, dc12;
   bool controlMode;
 public:
+  void getString(const char* prompt, char* buffer, uint8_t sz);
   void step();
   void run();
   void keypress(uint8_t keycode);
@@ -40,6 +41,7 @@ public:
     void dispVideo();
     void dispLEDs();
     void dispStatus();
+    void dispBPs();
   void dispMemory();
   void update();
 private:
