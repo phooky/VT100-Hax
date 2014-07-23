@@ -68,7 +68,7 @@ Vt100Sim::Vt100Sim(char* romPath, bool color) : running(true), inputMode(false),
   box(regWin,0,0);
   mvwprintw(regWin,0,1,"Registers");
   box(memWin,0,0);
-  mvwprintw(memWin,0,1,"Memory");
+  mvwprintw(memWin,0,1,"Mem");
   box(vidWin,0,0);
   mvwprintw(vidWin,0,1,"Video");
   box(bpWin,0,0);
@@ -598,6 +598,12 @@ void Vt100Sim::dispMemory() {
   int bdisp = 8;
   while (bdisp*2 <= bavail) bdisp*=2;
   uint16_t start = 0x2000;
+  
+  wattrset(memWin,A_NORMAL);
+  for (int b = 0; b<bdisp;b++) {
+    mvwprintw(memWin,0,7+3*b,"%02x",b);
+  }
+  wattrset(memWin,COLOR_PAIR(1));
 
   for (int y = 1; y < my - 1; y++) {
     wattrset(memWin,COLOR_PAIR(1));

@@ -58,21 +58,21 @@ Setup Area
 
 Start   |  Size  |  Description
 --------|--------|-------------
-0x21d3  | 22     | Answerback message (20chars+2delim)
-0x21e9  | 17     | Tabs (bit encoding)
-0x21fa  | 1      | 80/132 col mode
-   ?    | 1      | intensity
-        | 1      | Mode byte for PUSART
-        | 1      | Online/local
-        | 1      | Switches 1
-        | 1      | Switches 2
-        | 1      | Switches 3
-        | 1      | Switches 4
-        | 1      | Switches 5
-        | 1      | TX baud rate
-        | 1      | RX baud rate
-        | 1      | parity 
-        | 1      | nvr checksum
+0x217b  | 22     | Answerback message (20chars+2delim)
+0x2191  | 17     | Tabs (bit encoding) (first bit always set)
+0x21a2  | 1      | 80/132 col mode (00 = 80 col, 01 = 132 col)
+0x21a3  | 1      | intensity (00 = brightest, 0x1f = dimmest)
+0x21a4  | 1      | Mode byte for PUSART
+0x21a5  | 1      | Online/local
+0x21a6  | 1      | Switches 1
+0x21a7  | 1      | Switches 2
+0x21a8  | 1      | Switches 3
+0x21a9  | 1      | Switches 4
+0x21aa  | 1      | Switches 5
+0x21ab  | 1      | TX baud rate
+0x21ac  | 1      | RX baud rate
+0x21ad  | 1      | parity 
+0x21ae  | 1      | nvr checksum
 
 
 
