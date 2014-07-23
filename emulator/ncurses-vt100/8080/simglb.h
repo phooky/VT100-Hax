@@ -49,7 +49,7 @@ extern BYTE	mem_wp;
 extern BYTE	cpu_bus;
 #endif
 
-extern BYTE	ram[],*wrk_ram, cpu_state, int_data;
+extern BYTE	ram[],touched[],*wrk_ram, cpu_state, int_data;
 
 extern int	s_flag, l_flag, m_flag, x_flag, break_flag, i_flag, f_flag,
 		cpu_error, int_nmi, int_int, int_mode, cntl_c, cntl_bs,

@@ -140,6 +140,7 @@ void Vt100Sim::init() {
     if (cpu == I8080)	/* the unused flag bits are documented for */
         F = 2;		/* the 8080, so start with bit 1 set */
     memset((char *)	ram, m_flag, 65536);
+    memset((char *)	touched, m_flag, 65536);
     // load binary
     wprintw(msgWin,"Loading rom %s...\n",romPath);
     wrefresh(msgWin);
@@ -587,7 +588,7 @@ void Vt100Sim::dispBPs() {
 }
 
 void Vt100Sim::snapMemory() {
-  //memcpy(backing,ram+0x2000,backing_count);
+  memset(touched+0x2000,0,0x2000);
 }
 
 void Vt100Sim::dispMemory() {
@@ -602,13 +603,16 @@ void Vt100Sim::dispMemory() {
     wattrset(memWin,COLOR_PAIR(1));
     mvwprintw(memWin,y,1,"%04x:",start);
     for (int b = 0; b<bdisp;b++) {
+      if (!touched[start]) 
+	wattron(memWin,A_STANDOUT);
       if (ram[start] != 00) {
-	wattrset(memWin,COLOR_PAIR(2));
+	wattron(memWin,COLOR_PAIR(2));
 	wprintw(memWin," %02x",ram[start++]);
-	wattrset(memWin,COLOR_PAIR(1));
+	wattron(memWin,COLOR_PAIR(1));
       } else {
 	wprintw(memWin," %02x",ram[start++]);
       }
+      wattroff(memWin,A_STANDOUT);
     }
   }
   wrefresh(memWin);

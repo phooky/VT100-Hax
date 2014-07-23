@@ -452,11 +452,13 @@ void cpu_8080(void)
 				STACK =	ram + 65536L;
 #endif
 			*--STACK = (PC - ram) >> 8;
+			touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 			if (STACK <= ram)
 				STACK =	ram + 65536L;
 #endif
 			*--STACK = (PC - ram);
+			touched[STACK-ram] = 1;
 			switch (int_data) {
 			case 0xc7: /* RST 00H */
 				PC = ram + 0;
@@ -797,6 +799,7 @@ static int op_staxb(void)		/* STAX B */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(B << 8) + C) =	A;
+	*(touched + (B << 8) + C) = 1;
 	return(7);
 }
 
@@ -809,6 +812,7 @@ static int op_staxd(void)		/* STAX D */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(D << 8) + E) =	A;
+	*(touched + (D << 8) + E) = 1;
 	return(7);
 }
 
@@ -825,6 +829,7 @@ static int op_stann(void)		/* STA nn */
 	i = *PC++;
 	i += *PC++ << 8;
 	*(ram +	i) = A;
+	*(touched + i) = 1;
 	return(13);
 }
 
@@ -837,6 +842,7 @@ static int op_movma(void)		/* MOV M,A */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(H << 8) + L) =	A;
+	*(touched + (H << 8) + L) = 1;
 	return(7);
 }
 
@@ -849,6 +855,7 @@ static int op_movmb(void)		/* MOV M,B */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(H << 8) + L) =	B;
+	*(touched + (H << 8) + L) = 1;
 	return(7);
 }
 
@@ -861,6 +868,7 @@ static int op_movmc(void)		/* MOV M,C */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(H << 8) + L) =	C;
+	*(touched + (H << 8) + L) = 1;
 	return(7);
 }
 
@@ -873,6 +881,7 @@ static int op_movmd(void)		/* MOV M,D */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(H << 8) + L) =	D;
+	*(touched + (H << 8) + L) = 1;
 	return(7);
 }
 
@@ -885,6 +894,7 @@ static int op_movme(void)		/* MOV M,E */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(H << 8) + L) =	E;
+	*(touched + (H << 8) + L) = 1;
 	return(7);
 }
 
@@ -897,6 +907,7 @@ static int op_movmh(void)		/* MOV M,H */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(H << 8) + L) =	H;
+	*(touched + (H << 8) + L) = 1;
 	return(7);
 }
 
@@ -909,6 +920,7 @@ static int op_movml(void)		/* MOV M,L */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(H << 8) + L) =	L;
+	*(touched + (H << 8) + L) = 1;
 	return(7);
 }
 
@@ -921,6 +933,7 @@ static int op_mvimn(void)		/* MVI M,n */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*(ram +	(H << 8) + L) =	*PC++;
+	*(touched + (H << 8) + L) = 1;
 	return(10);
 }
 
@@ -1384,6 +1397,8 @@ static int op_shldnn(void)		/* SHLD nn */
 	i += *PC++ << 8;
 	*(ram +	i) = L;
 	*(ram +	i + 1) = H;
+	*(touched + i) = 1;
+	*(touched + i + 1) = 1;
 	return(16);
 }
 
@@ -2540,6 +2555,7 @@ static int op_inrm(void)		/* INR M */
 	p = ram	+ (H <<	8) + L;
 	((*p & 0xf) + 1	> 0xf) ? (F |= H_FLAG) : (F &= ~H_FLAG);
 	(*p)++;
+	touched[p-ram] = 1;
 	(parity[*p]) ? (F &= ~P_FLAG) : (F |= P_FLAG);
 	(*p & 128) ? (F	|= S_FLAG) : (F	&= ~S_FLAG);
 	(*p) ? (F &= ~Z_FLAG) :	(F |= Z_FLAG);
@@ -2628,6 +2644,7 @@ static int op_dcrm(void)		/* DCR M */
 #endif
 	p = ram	+ (H <<	8) + L;
 	(((*p - 1) & 0xf) == 0xf) ? (F |= H_FLAG) : (F &= ~H_FLAG);
+	touched[p-ram] = 1;
 	(*p)--;
 	(parity[*p]) ? (F &= ~P_FLAG) : (F |= P_FLAG);
 	(*p & 128) ? (F	|= S_FLAG) : (F	&= ~S_FLAG);
@@ -2705,9 +2722,11 @@ static int op_xthl(void)		/* XTHL */
 #endif
 	i = *STACK;
 	*STACK = L;
+	touched[STACK-ram] = 1;
 	L = i;
 	i = *(STACK + 1);
 	*(STACK	+ 1) = H;
+	touched[1+STACK-ram] = 1;
 	H = i;
 #ifdef BUS_8080
 	cpu_bus = CPU_STACK;
@@ -2731,11 +2750,13 @@ static int op_pushpsw(void)		/* PUSH PSW */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = A;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = F;
+	touched[STACK-ram] = 1;
 	return(11);
 }
 
@@ -2752,11 +2773,13 @@ static int op_pushb(void)		/* PUSH B */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = B;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = C;
+	touched[STACK-ram] = 1;
 	return(11);
 }
 
@@ -2773,11 +2796,13 @@ static int op_pushd(void)		/* PUSH D */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = D;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = E;
+	touched[STACK-ram] = 1;
 	return(11);
 }
 
@@ -2794,11 +2819,13 @@ static int op_pushh(void)		/* PUSH H */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = H;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = L;
+	touched[STACK-ram] = 1;
 	return(11);
 }
 
@@ -2932,11 +2959,13 @@ static int op_call(void)		/* CALL */
 	fp_sampleLightGroup(0, 0);
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram + i;
 	return(17);
 }
@@ -3135,11 +3164,13 @@ static int op_cz(void)			/* CZ nn */
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram) >> 8;
+		touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 		if (STACK <= ram)
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram);
+		touched[STACK-ram] = 1;
 #ifdef BUS_8080
 		cpu_bus = CPU_STACK;
 #endif
@@ -3172,11 +3203,13 @@ static int op_cnz(void)			/* CNZ nn */
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram) >> 8;
+		touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 		if (STACK <= ram)
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram);
+		touched[STACK-ram] = 1;
 #ifdef BUS_8080
 		cpu_bus = CPU_STACK;
 #endif
@@ -3209,11 +3242,13 @@ static int op_cc(void)			/* CC nn */
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram) >> 8;
+		touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 		if (STACK <= ram)
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram);
+		touched[STACK-ram] = 1;
 #ifdef BUS_8080
 		cpu_bus = CPU_WO | CPU_MEMR;
 #endif
@@ -3246,6 +3281,7 @@ static int op_cnc(void)			/* CNC nn */
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram) >> 8;
+		touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 		if (STACK <= ram)
 			STACK =	ram + 65536L;
@@ -3257,6 +3293,7 @@ static int op_cnc(void)			/* CNC nn */
 		fp_sampleLightGroup(0, 0);
 #endif
 		*--STACK = (PC - ram);
+		touched[STACK-ram] = 1;
 		PC = ram + i;
 		return(17);
 	} else {
@@ -3283,11 +3320,13 @@ static int op_cpe(void)			/* CPE nn */
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram) >> 8;
+		touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 		if (STACK <= ram)
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram);
+		touched[STACK-ram] = 1;
 #ifdef BUS_8080
 		cpu_bus = CPU_STACK;
 #endif
@@ -3320,11 +3359,13 @@ static int op_cpo(void)			/* CPO nn */
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram) >> 8;
+		touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 		if (STACK <= ram)
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram);
+		touched[STACK-ram] = 1;
 #ifdef BUS_8080
 		cpu_bus = CPU_STACK;
 #endif
@@ -3357,11 +3398,13 @@ static int op_cm(void)			/* CM nn */
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram) >> 8;
+		touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 		if (STACK <= ram)
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram);
+		touched[STACK-ram] = 1;
 #ifdef BUS_8080
 		cpu_bus = CPU_STACK;
 #endif
@@ -3394,11 +3437,13 @@ static int op_cp(void)			/* CP nn */
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram) >> 8;
+		touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 		if (STACK <= ram)
 			STACK =	ram + 65536L;
 #endif
 		*--STACK = (PC - ram);
+		touched[STACK-ram] = 1;
 #ifdef BUS_8080
 		cpu_bus = CPU_STACK;
 #endif
@@ -3650,11 +3695,13 @@ static int op_rst0(void)		/* RST 0 */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram;
 	return(11);
 }
@@ -3672,11 +3719,13 @@ static int op_rst1(void)		/* RST 1 */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram + 0x08;
 	return(11);
 }
@@ -3694,11 +3743,13 @@ static int op_rst2(void)		/* RST 2 */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram + 0x10;
 	return(11);
 }
@@ -3716,11 +3767,13 @@ static int op_rst3(void)		/* RST 3 */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram + 0x18;
 	return(11);
 }
@@ -3738,11 +3791,13 @@ static int op_rst4(void)		/* RST 4 */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram + 0x20;
 	return(11);
 }
@@ -3760,11 +3815,13 @@ static int op_rst5(void)		/* RST 5 */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram + 0x28;
 	return(11);
 }
@@ -3782,11 +3839,13 @@ static int op_rst6(void)		/* RST 6 */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram + 0x30;
 	return(11);
 }
@@ -3804,11 +3863,13 @@ static int op_rst7(void)		/* RST 7 */
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram) >> 8;
+	touched[STACK-ram] = 1;
 #ifdef WANT_SPC
 	if (STACK <= ram)
 		STACK =	ram + 65536L;
 #endif
 	*--STACK = (PC - ram);
+	touched[STACK-ram] = 1;
 	PC = ram + 0x38;
 	return(11);
 }

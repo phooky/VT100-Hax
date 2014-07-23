@@ -72,6 +72,7 @@ BYTE mem_wp;			/* memory write-protect flag */
  *	Variables for memory of the emulated CPU
  */
 BYTE ram[65536];		/* 64KB RAM */
+BYTE touched[65536];		/* 64KB RAM */
 BYTE *wrk_ram;			/* workpointer into memory for dump etc. */
 
 /*
