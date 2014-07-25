@@ -33,8 +33,8 @@ WINDOW* msgWin;
 WINDOW* statusBar;
 WINDOW* bpWin;
 
-Vt100Sim::Vt100Sim(char* romPath, bool color) : running(true), inputMode(false),
-						dc11(false), dc12(false), controlMode(true)
+Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputMode(false),
+							dc11(false), dc12(false), controlMode(true)
 {
   this->romPath = romPath;
 
@@ -43,7 +43,7 @@ Vt100Sim::Vt100Sim(char* romPath, bool color) : running(true), inputMode(false),
   initscr();
   int my,mx;
   getmaxyx(stdscr,my,mx);
-  if (color) { start_color(); }
+  start_color();
   cbreak();
   noecho();
   keypad(stdscr,1);

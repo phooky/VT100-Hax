@@ -13,7 +13,7 @@ extern "C" {
 class Vt100Sim
 {
 public:
-  Vt100Sim(char* romPath = 0,bool color=true);
+  Vt100Sim(const char* romPath = 0,bool running=false);
   ~Vt100Sim();
   void init();
   BYTE ioIn(BYTE addr);
@@ -21,7 +21,7 @@ public:
   NVR nvr;
   Keyboard kbd;
 private:
-  char* romPath;
+  const char* romPath;
   bool running;
   bool inputMode;
   bool needsUpdate;
