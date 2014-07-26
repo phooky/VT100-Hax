@@ -120,7 +120,6 @@ static void prom_set_data(uint8_t data) {
 static uint8_t prom_read(uint16_t addr) {
   uint8_t b = 0;
   prom_set_address(addr);
-  for (uint8_t i = 0 ; i < 255; i++) asm("nop");
   for (uint8_t i = 0 ; i < 8  ; i++)
   {
     uint8_t bit = in(io_lines[i]) ? 0x80 : 0;
@@ -143,6 +142,7 @@ static void prom_write_page(uint16_t addr, uint8_t* data, uint8_t len) {
   }
   // Use !DATA polling
   addr--;
+  prom_setup(true);
   while (1) {
     prom_read_mode();
     uint8_t r = prom_read(addr);
@@ -150,7 +150,6 @@ static void prom_write_page(uint16_t addr, uint8_t* data, uint8_t len) {
       break;
     }
   }
-  prom_off_mode();
 }
 
 static uint8_t
@@ -255,19 +254,16 @@ int main(void)
       }
       send_str(PSTR("OK\r\n"));
     } else if (c == 'W') {
-      for (uint16_t j = 0; j < (8096/64); j++) {
+      for (uint16_t j = 0; j < 8192; j+=64) {
 	uint8_t data[64];
 	for (int i = 0; i < 64; i++) { 
 	  while (usb_serial_available() == 0) { }
 	  data[i] = usb_serial_getchar();
 	}
-	prom_write_page(0x1f00,data,64);
+	prom_write_page(j,data,64);
       }
-    } else if (c == 'w') {
-      uint8_t data[64];
-      for (int i = 0; i < 64; i++) { data[i] = 63-i; }
-      prom_write_page(0x1f00,data,64);
-    }else {
+      send_str(PSTR("OK\r\n"));
+    } else {
       send_str(PSTR("ERR\r\n"));
     }
   }
