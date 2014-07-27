@@ -4282,37 +4282,11 @@ X1c9f:	mvi	m,7fh
 	mov	m,e
 	ret
 ;
-X1cad:	mov	d,e
-	mov	b,l
-	mov	d,h
-	dcr	l
-	mov	d,l
-	mov	d,b
-	db	20h
-	mov	b,c
-	nop
-X1cb6:	mov	d,h
-	mov	c,a
-	db	20h
-	mov	b,l
-	mov	e,b
-	mov	c,c
-	mov	d,h
-	db	20h
-	mov	d,b
-	mov	d,d
-	mov	b,l
-	mov	d,e
-	mov	d,e
-	db	20h
-	shld	X4553
-	mov	d,h
-	dcr	l
-	mov	d,l
-	mov	d,b
-	shld	Xcd00
-	cmp	d
-	dcx	d
+X1cad:	
+	db	'SET-UP A',0
+X1cb6:	
+	db	'TO EXIT PRESS ',022h,'SET-UP',022h,0
+	call	X1bba
 	jmp	X0fc8
 ;
 X1cd3:	call	X1ccd
