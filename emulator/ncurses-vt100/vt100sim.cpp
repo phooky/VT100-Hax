@@ -443,6 +443,7 @@ void Vt100Sim::update() {
   dispMemory();
   dispVideo();
   dispStatus();
+  dispBPs();
 }
 
 void Vt100Sim::keypress(uint8_t keycode)
@@ -483,7 +484,7 @@ void Vt100Sim::dispVideo() {
   uint8_t y = -2;
   for (uint8_t i = 1; i < 100; i++) {
         char* p = (char*)ram + start;
-        char* maxp = p + 132;
+        char* maxp = p + 133;
 	//if (*p != 0x7f) y++;
 	y++;
 	wmove(vidWin,y,1);
@@ -578,6 +579,7 @@ void Vt100Sim::dispStatus() {
 void Vt100Sim::dispBPs() {
   int y = 1;
   werase(bpWin);
+  box(bpWin,0,0);
   mvwprintw(bpWin,0,1,"Brkpts");
   for (std::set<uint16_t>::iterator i = breakpoints.begin();
        i != breakpoints.end();

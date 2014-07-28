@@ -4172,20 +4172,20 @@ X1bf4:	dcr	e
 	jnz	X1be8
 	ret
 ;
-X1bf9:	lxi	b,X1cad
+X1bf9:	lxi	b,lSETUP
 	lxi	h,X2253
 	mvi	a,0fah
 	call	X1c71
 	mvi	c,1
 	mvi	b,10h
 	call	X1c8a
-	lxi	b,X1cad
+	lxi	b,lSETUP
 	mvi	a,0fah
 	call	X1c71
 	mvi	c,1
 	mvi	b,50h
 	call	X1c8a
-	lxi	b,X1cb6
+	lxi	b,lEXIT
 	mvi	a,0fdh
 	call	X1c71
 	mvi	c,13h
@@ -4282,9 +4282,9 @@ X1c9f:	mvi	m,7fh
 	mov	m,e
 	ret
 ;
-X1cad:	
-	db	'SET-UP A',0
-X1cb6:	
+lSETUP:	
+	db	'RC2014 A',0
+lEXIT:	
 	db	'TO EXIT PRESS ',022h,'SET-UP',022h,0
 	call	X1bba
 	jmp	X0fc8
@@ -4750,6 +4750,10 @@ X1fd4:	ora	a
 	ret
 ;
 	nop
+
+	org	01fffh
+	db	075h
+
 ;
 ;	Miscellaneous equates
 ;
