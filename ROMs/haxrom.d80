@@ -14,17 +14,13 @@ boot:	di
 ivK:	call	f_kb		; call keyboard handler
 	ei
 	ret
-;
-X000d:	nop
-;
+	;; FREE 3B
 	org	10h
 ;;; IV 0x10: recv
 ivR:	call	f_rcv		; call receiver handler
 	ei
-X0014:	ret
-;
-	nop
-;
+	ret
+	;; FREE 3B
 	org	18h
 ;;; IV 0x18: recv & kbd
 ivKR:	call	f_rcv		; call receiver handler
@@ -34,16 +30,12 @@ ivKR:	call	f_rcv		; call receiver handler
 ;;; IV 0x20: vertical freq.
 ivV:	call	f_vrt		; call vertical handler
 	ret
-;
-	nop
-;
+	;; FREE 4B
 	org	28h
 ;;; IV 0x28: vertical freq. & kbd (kbd ignored)
 	call	f_vrt		; call vertical handler
 	ret
-;
-	nop
-;
+	;; FREE 4B
 	org	30h
 ;;; IV 0x30: vertical freq. & recv
 ivVR:	call	f_rcv		; call receiver handler
@@ -633,84 +625,14 @@ X044b:	db	30h
 	mov	e,h
 	mov	a,h
 	db	20h
-X0476:	db	20h
-	mov	a,a
-	mov	a,a
-	mov	a,a
-	nop
-	mov	m,b
-	mov	l,a
-	mov	a,c
-	mov	m,h
-	mov	m,a
-	mov	m,c
-	jmp	boot
-;
-	org	485h
-;
-	mov	e,l
-	mov	e,e
-	mov	l,c
-	mov	m,l
-	mov	m,d
-	mov	h,l
-	lxi	sp,X00c4
-	jnz	X6081
-	dcr	l
-	dad	sp
-	stc
-	inr	m
-	inx	sp
-	dcx	d
-	pop	b
-	jnc	X08d0
-	dcr	a
-	db	30h
-	db	38h
-	mvi	m,35h
-	sta	Xb709
-	out	0d1h
-	ora	b
-	ldax	b
-	mov	e,h
-	mov	l,h
-	mov	l,e
-	mov	h,a
-	mov	h,m
-	mov	h,c
-	cmp	b
-	adc	l
-	ora	d
-	ora	c
-	nop
-	daa
-	dcx	sp
-	mov	l,d
-	mov	l,b
-	mov	h,h
-	mov	m,e
-	xra	m
-	xra	h
-	ora	l
-	ora	h
-	dcr	c
-	mvi	l,2ch
-	mov	l,m
-	mov	h,d
-	mov	a,b
-	add	d
-	cmp	c
-	ora	e
-	ora	m
-	xra	l
-	nop
-	cma
-	mov	l,l
-	db	20h
-	hlt
-;
-	mov	h,e
-	mov	a,d
+KBTab:	db	 20h,  7fh,  7fh,  7fh, 00h, 'p', 'o', 'y', 't', 'w', 'q'
+	db	0c3h,  00h,  00h,  00h, ']', '[', 'i', 'u', 'r', 'e', '1'
+	db	0c4h,  00h, 0c2h, 081h, '`', '-', '9', '7', '4', '3', 1bh
+	db	0c1h, 0d2h, 0d0h,  08h, '=', '0', '8', '6', '5', '2', 09h
+	db	0b7h, 0d3h, 0d1h, 0b0h, 0ah, '\', 'l', 'k', 'g', 'f', 'a'
+	db	0b8h,  8dh, 0b2h, 0b1h, 00h, 27h, 3bh, 'j', 'h', 'd', 's'
+	db	0aeh, 0ach, 0b5h, 0b4h, 0dh, '.', ',', 'n', 'b', 'x', 82h
+	db	0b9h, 0b3h, 0b6h, 0adh, 00h, '/', 'm', ' ', 'v', 'c', 'z'
 	rst	7
 ;;; Vertical interrupt handler
 f_vrt:	push	psw
@@ -1114,7 +1036,7 @@ X0776:	pop	h
 	mov	d,a
 	mov	a,e
 	sub	d
-	lxi	h,X0476
+	lxi	h,KBTab
 	mov	e,a
 	mvi	d,0
 	dad	d
@@ -3379,7 +3301,7 @@ X162b:	inx	h
 	inx	h
 	jmp	X13db
 ;
-X1636:	lxi	h,X000d
+X1636:	lxi	h,000dh
 	shld	X212d
 	xra	a
 	sta	X21ba
@@ -4565,7 +4487,7 @@ X1e9f:	call	X1edd
 	inx	h
 	shld	X21b4
 	mov	b,a
-	lxi	d,X0014
+	lxi	d,0014h
 	call	memset
 	lxi	h,X1eb8
 	shld	X2140

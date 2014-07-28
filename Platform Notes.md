@@ -54,6 +54,8 @@ RAM Map
  0x2014  | 0x2015  |   1B   | 0xff during init?
 0x22d0  | 0x2c00  | 2352B  | Screen RAM
 
+0x22bb through 0x22ef appear to be unused!!!
+
 Setup Area
 
 Start   |  Size  |  Description
