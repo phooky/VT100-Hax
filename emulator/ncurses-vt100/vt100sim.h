@@ -20,6 +20,7 @@ public:
   void ioOut(BYTE addr, BYTE data);
   NVR nvr;
   Keyboard kbd;
+  uint8_t bright;
 private:
   const char* romPath;
   bool running;

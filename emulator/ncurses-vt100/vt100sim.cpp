@@ -34,7 +34,7 @@ WINDOW* statusBar;
 WINDOW* bpWin;
 
 Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputMode(false),
-							dc11(false), dc12(false), controlMode(true)
+							dc11(true), dc12(false), controlMode(true)
 {
   this->romPath = romPath;
 
@@ -193,10 +193,15 @@ void Vt100Sim::ioOut(BYTE addr, BYTE data) {
         break;
     case 0x62:
         nvr.set_latch(data);
+	break;
+    case 0x42:
+      bright = data;
+      break;
     case 0xa2:
       //wprintw(msgWin,"DC11 %02x\n",data);
       //wrefresh(msgWin);
       dc11 = true;
+      break;
     case 0xc2:
       //wprintw(msgWin,"DC12 %02x\n",data);
       //wrefresh(msgWin);
@@ -480,7 +485,7 @@ void Vt100Sim::dispVideo() {
   uint16_t start = 0x2000;
   werase(vidWin);
   box(vidWin,0,0);
-  mvwprintw(vidWin,0,1,"Video");
+  mvwprintw(vidWin,0,1,"Video [bright %x]",bright);
   uint8_t y = -2;
   for (uint8_t i = 1; i < 100; i++) {
         char* p = (char*)ram + start;
