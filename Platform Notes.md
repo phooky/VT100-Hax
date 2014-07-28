@@ -56,6 +56,8 @@ RAM Map
 
 0x22bb through 0x22ef appear to be unused!!!
 
+We are using 0x22ec-0x22ed as our screensaver counter.
+
 Setup Area
 
 Start   |  Size  |  Description

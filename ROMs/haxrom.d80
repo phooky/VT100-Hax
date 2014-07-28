@@ -51,31 +51,36 @@ X003d:	di
 	out	62h		; 0x0f to NVR latch
 	cma			; invert A (0xf0)
 	out	42h		; 0xf0 to brightness
+
+;;; We are removing checksum, both to save space
+;;; and to avoid having to waste time shoehorning
+;;; in the parity bits.
+	
 ;;; Run checksum on each 2K ROM, indicating with
 ;;; the keyboard LEDs which is being scanned.
 ;;; The # of the chip being scanned is stored in B.
-	xra	a		; zero A
-	mov	d,a		; zero D, L, H
-	mov	l,a
-	mov	h,a
-csrom:	inr	a		; next 2K ROM
-	mov	b,a		; store the current ROM # in B
-	out	82h		; show current ROM on LEDs
-	mvi	c,8		; Checksum over 8 256B blocks
-X004f:	rlc			;    Rotate A left
-	xra	m		;    A <- A ^ memory
-	inr	l		;    next memory address
-	jnz	X004f		;    ... repeat until end of block
-	inr	h		; next block
-	dcr	c		; decrement block count
-	jnz	X004f		; ... repeat until end of chip
-	ora	a		; Check the value of the accumulator
-X005b:	jnz	X005b		; If it's not zero, hang forever
-	mov	a,b		; Put the ROM # back in the accumulator
-	cpi	4		; If it's not 4...
-	jnz	csrom		; repeat for the next ROM
-	inr	a		
-	out	82h		; write 5 to LEDs
+;; 	xra	a		; zero A
+;; 	mov	d,a		; zero D, L, H
+;; 	mov	l,a
+;; 	mov	h,a
+;; csrom:	inr	a		; next 2K ROM
+;; 	mov	b,a		; store the current ROM # in B
+;; 	out	82h		; show current ROM on LEDs
+;; 	mvi	c,8		; Checksum over 8 256B blocks
+;; X004f:	rlc			;    Rotate A left
+;; 	xra	m		;    A <- A ^ memory
+;; 	inr	l		;    next memory address
+;; 	jnz	X004f		;    ... repeat until end of block
+;; 	inr	h		; next block
+;; 	dcr	c		; decrement block count
+;; 	jnz	X004f		; ... repeat until end of chip
+;; 	ora	a		; Check the value of the accumulator
+;; X005b:	jnz	X005b		; If it's not zero, hang forever
+;; 	mov	a,b		; Put the ROM # back in the accumulator
+;; 	cpi	4		; If it's not 4...
+;; 	jnz	csrom		; repeat for the next ROM
+;; 	inr	a		
+;; 	out	82h		; write 5 to LEDs
 ;;; Zero all RAM. C gets the high byte of the address of the top of
 ;;; RAM, HL is loaded with it, and it zeros memory all the way down,
 ;;; leaving the start of RAM in HL
@@ -633,7 +638,7 @@ KBTab:	db	 20h,  7fh,  7fh,  7fh, 00h, 'p', 'o', 'y', 't', 'w', 'q'
 	db	0b8h,  8dh, 0b2h, 0b1h, 00h, 27h, 3bh, 'j', 'h', 'd', 's'
 	db	0aeh, 0ach, 0b5h, 0b4h, 0dh, '.', ',', 'n', 'b', 'x', 82h
 	db	0b9h, 0b3h, 0b6h, 0adh, 00h, '/', 'm', ' ', 'v', 'c', 'z'
-	rst	7
+	rst	7		; Potential Free
 ;;; Vertical interrupt handler
 f_vrt:	push	psw
 	push	h
