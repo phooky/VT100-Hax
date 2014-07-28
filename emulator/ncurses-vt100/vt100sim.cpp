@@ -341,7 +341,7 @@ void Vt100Sim::run() {
     if (sigAlrm && needsUpdate) { sigAlrm = 0; update();}
     int ch = getch();
     if (ch != ERR) {
-      if (ch == KEY_F(2)) {
+      if (ch == 27) { // esc key
 	controlMode = !controlMode;
 	dispStatus();
       } else if (controlMode) {
