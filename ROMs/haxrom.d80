@@ -51,11 +51,6 @@ X003d:	di
 	out	62h		; 0x0f to NVR latch
 	cma			; invert A (0xf0)
 	out	42h		; 0xf0 to brightness
-
-;;; We are removing checksum, both to save space
-;;; and to avoid having to waste time shoehorning
-;;; in the parity bits.
-	
 ;;; Run checksum on each 2K ROM, indicating with
 ;;; the keyboard LEDs which is being scanned.
 ;;; The # of the chip being scanned is stored in B.
@@ -144,7 +139,7 @@ X00c4:	jz	X00cb
 X00cb:	mvi	a,2fh
 	sta	X21c9
 	out	62h
-X00d2:	lxi	b,X0fff
+X00d2:	lxi	b,0fffh
 	ei
 X00d6:	mvi	a,8
 	ana	e
@@ -467,7 +462,7 @@ X034b:	mov	b,a
 	cpi	20h
 	lxi	h,X0970
 	jnz	X035e
-	lxi	h,X0370
+	lxi	h,0370h
 X035e:	shld	X2001
 	lda	X21a8
 	ani	10h
@@ -476,9 +471,10 @@ X035e:	shld	X2001
 	out	0c2h
 	ret
 ;
+	;; 036b OK
 X036b:	lda	X21a6
 	ani	20h
-X0370:	jnz	X0375
+	jnz	X0375
 	mvi	a,1
 X0375:	ori	0ah
 	out	0a2h
@@ -487,6 +483,8 @@ X0375:	ori	0ah
 	out	0a2h
 	ret
 ;
+	;; 0381 NOT OK
+	org	0381h
 X0381:	lda	X21a2
 	ora	a
 	jz	X0b63
@@ -2371,7 +2369,7 @@ X0fed:	lxi	h,X2155
 X0ffa:	call	X13e6
 	mov	a,e
 	sub	d
-X0fff:	mov	c,a
+	mov	c,a
 X1000:	lda	X212b
 X1003:	mov	d,m
 	mov	m,a
