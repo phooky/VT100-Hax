@@ -64,14 +64,14 @@ void NVR::clock(bool rising) {
     {
         uint8_t addr = compute_addr(address_reg);
         contents[addr] = data_reg & 0x3fff;
-        wprintw(msgWin,"NVR write %x <- %x\n",addr,data_reg);wrefresh(msgWin);
+        //wprintw(msgWin,"NVR write %x <- %x\n",addr,data_reg);wrefresh(msgWin);
     }
         break;
     case READ:
     {
         uint8_t addr = compute_addr(address_reg);
         data_reg = contents[addr];
-        wprintw(msgWin,"NVR read  %x -> %x\n",addr,data_reg);wrefresh(msgWin);
+        //wprintw(msgWin,"NVR read  %x -> %x\n",addr,data_reg);wrefresh(msgWin);
     }
         break;
     case SHIFT_OUT:

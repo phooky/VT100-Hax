@@ -117,6 +117,7 @@ bool Signal::add_ticks(uint16_t delta) {
 Signal lba4(22);
 Signal lba7(182);
 Signal vertical(46084);
+Signal uartclk(5000); // uart clock is super arbitrary
 
 void Vt100Sim::init() {
     i_flag = 1;
@@ -163,7 +164,15 @@ void Vt100Sim::init() {
 }
 
 BYTE Vt100Sim::ioIn(BYTE addr) {
-    if (addr == 0x42) {
+  if (addr == 0x00) {
+    uint8_t r = uart.read_data();
+    wprintw(msgWin,"PUSART RD DAT: %x\n", r);
+    return r;
+  } else if (addr == 0x01) {
+    uint8_t r = uart.read_command();
+    wprintw(msgWin,"PUSART RD CMD: %x\n", r);
+    return r;
+  } else if (addr == 0x42) {
         // Read buffer flag
         uint8_t flags = 0x02;
         if (lba7.get_value()) {
@@ -172,6 +181,9 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
         if (nvr.data()) {
             flags |= 0x20;
         }
+	if (uart.xmit_ready()) {
+	  flags |= 0x01;
+	}
         if (t_ticks % 2000 < 100) { flags |= 0x10; flags |= 0x80; }
         if (kbd.get_tx_buf_empty()) {
             flags |= 0x80; // kbd ready?
@@ -188,6 +200,14 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
 
 void Vt100Sim::ioOut(BYTE addr, BYTE data) {
     switch(addr) {
+    case 0x00:
+      wprintw(msgWin,"PUSART DAT: %x\n", data);wrefresh(msgWin);
+      uart.write_data(data);
+      break;
+    case 0x01:
+      wprintw(msgWin,"PUSART CMD: %x\n", data);wrefresh(msgWin);
+      uart.write_command(data);
+      break;
     case 0x82:
         kbd.set_status(data);
         break;
@@ -421,11 +441,18 @@ void Vt100Sim::step()
   const uint32_t start = t_ticks;
   cpu_error = NONE;
   cpu_8080();
-  if (int_int == 0) { int_data = 0xff; }
+  if (int_int == 0) { int_data = 0xc7; }
   const uint16_t t = t_ticks - start;
+  if (uartclk.add_ticks(t)) {
+    if (uart.clock()) {
+      int_data |= 0xd7;
+      int_int = 1;
+      wprintw(msgWin,"UART interrupt\n");wrefresh(msgWin);
+    }
+  }
   if (dc11 && lba4.add_ticks(t)) {
     if (kbd.clock(lba4.get_value())) {
-      int_data &= 0xcf;
+      int_data |= 0xcf;
       int_int = 1;
       //wprintw(msgWin,"KBD interrupt\n");wrefresh(msgWin);
     }
@@ -435,7 +462,7 @@ void Vt100Sim::step()
   }
   if (dc11 && vertical.add_ticks(t)) {
     if (vertical.get_value()) {
-      int_data &= 0xe7;
+      int_data |= 0xe7;
       int_int = 1;
     }
   }
@@ -512,7 +539,7 @@ void Vt100Sim::dispVideo() {
             }
         }
         if (p == maxp) {
-	  wprintw(msgWin,"Overflow line %d\n",i); wrefresh(msgWin);
+	  //wprintw(msgWin,"Overflow line %d\n",i); wrefresh(msgWin);
 	  break;
 	}
         // at terminator
@@ -558,7 +585,7 @@ void Vt100Sim::dispStatus() {
   displayFlag(ledNames[6], (flags & (1<<0)) != 0 );
 
   // Mode information
-  wmove(statusBar,0,mx/2);
+  wmove(statusBar,0,mx/3);
   wattrset(statusBar,A_BOLD);
   wprintw(statusBar,"| ");
   if (controlMode) {
@@ -577,7 +604,7 @@ void Vt100Sim::dispStatus() {
     wprintw(statusBar,"STOPPED");
     wattroff(statusBar,A_REVERSE);
   }
-  wprintw(statusBar," |");
+  wprintw(statusBar," | %s |",uart.pty_name());
   wrefresh(statusBar);
 }
 

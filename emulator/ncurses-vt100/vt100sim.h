@@ -3,6 +3,7 @@
 
 #include "nvr.h"
 #include "keyboard.h"
+#include "pusart.h"
 #include <stdint.h>
 #include <set>
 
@@ -20,6 +21,7 @@ public:
   void ioOut(BYTE addr, BYTE data);
   NVR nvr;
   Keyboard kbd;
+  PUSART uart;
   uint8_t bright;
 private:
   const char* romPath;

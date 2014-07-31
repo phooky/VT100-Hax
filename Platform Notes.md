@@ -171,3 +171,17 @@ Scans for characters in the FIFO in the control range (<0x20 or 0x7f).
 
 8-bit data bus, 16-bit address bus.
 8228 breaks devices on bus into write-only and bidirectional/read-only busses.
+
+LXI LIST
+--------
+
+All value loads that could be addresses:
+X01c3: lxi h,X0815 ???
+       lxi h, 020e ??? right after loads keymapping table
+X0431: lxi b,X0113 (then call 0f7e,0e47)
+X05af: lxi h,X05b8 (then jmp a18) // Likely table? (but subsequent code at 5b8 is valid)
+X0c64: lxi h,X05ad (then jmp a18) // ... less likely table, feels like a chain
+X0c7a: lxi h,X0c8a (feels like a table)
+
+
+
