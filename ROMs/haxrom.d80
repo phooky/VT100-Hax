@@ -54,28 +54,28 @@ X003d:	di
 ;;; Run checksum on each 2K ROM, indicating with
 ;;; the keyboard LEDs which is being scanned.
 ;;; The # of the chip being scanned is stored in B.
-;; 	xra	a		; zero A
-;; 	mov	d,a		; zero D, L, H
-;; 	mov	l,a
-;; 	mov	h,a
-;; csrom:	inr	a		; next 2K ROM
-;; 	mov	b,a		; store the current ROM # in B
-;; 	out	82h		; show current ROM on LEDs
-;; 	mvi	c,8		; Checksum over 8 256B blocks
-;; X004f:	rlc			;    Rotate A left
-;; 	xra	m		;    A <- A ^ memory
-;; 	inr	l		;    next memory address
-;; 	jnz	X004f		;    ... repeat until end of block
-;; 	inr	h		; next block
-;; 	dcr	c		; decrement block count
-;; 	jnz	X004f		; ... repeat until end of chip
-;; 	ora	a		; Check the value of the accumulator
-;; X005b:	jnz	X005b		; If it's not zero, hang forever
-;; 	mov	a,b		; Put the ROM # back in the accumulator
-;; 	cpi	4		; If it's not 4...
-;; 	jnz	csrom		; repeat for the next ROM
-;; 	inr	a		
-;; 	out	82h		; write 5 to LEDs
+	xra	a		; zero A
+	mov	d,a		; zero D, L, H
+	mov	l,a
+	mov	h,a
+csrom:	inr	a		; next 2K ROM
+	mov	b,a		; store the current ROM # in B
+	out	82h		; show current ROM on LEDs
+	mvi	c,8		; Checksum over 8 256B blocks
+X004f:	rlc			;    Rotate A left
+	xra	m		;    A <- A ^ memory
+	inr	l		;    next memory address
+	jnz	X004f		;    ... repeat until end of block
+	inr	h		; next block
+	dcr	c		; decrement block count
+	jnz	X004f		; ... repeat until end of chip
+	ora	a		; Check the value of the accumulator
+X005b:	jnz	X005b		; If it's not zero, hang forever
+	mov	a,b		; Put the ROM # back in the accumulator
+	cpi	4		; If it's not 4...
+	jnz	csrom		; repeat for the next ROM
+	inr	a		
+	out	82h		; write 5 to LEDs
 ;;; Zero all RAM. C gets the high byte of the address of the top of
 ;;; RAM, HL is loaded with it, and it zeros memory all the way down,
 ;;; leaving the start of RAM in HL
@@ -1210,41 +1210,33 @@ X08d0:	jmp	X05e6
 ;
 	ret
 ;
-X08d4:	sui	5
+X08d4:	sui	5		; subtract 5 from A and return if negative
 	rm
-	lxi	h,X08e5
-	add	a
+	lxi	h,X08e5		; load jump table at 8e5
+	add	a		; double a
 	mov	e,a
 	mvi	d,0
-	dad	d
-	mov	e,m
+	dad	d		; hl = X08e5 + 2A
+	mov	e,m		; load DE from (HL) little-endian
 	inx	h
 	mov	d,m
-	xchg
-	xra	a
-	pchl
+	xchg	
+	xra	a		; zero A
+	pchl			; jump to address
 ;
-X08e5:	nop
-	dad	b
-	sub	a
-	dad	b
-	db	38h
-	dad	b
-	mov	b,c
-	dad	b
-	sphl
-	dcr	c
-	mov	d,l
-	dad	b
-	mov	d,l
-	dad	b
-	mov	d,l
-	dad	b
-	mov	c,e
-	dad	b
-	ei
-	db	8
-	cm	X3c08
+X08e5:	dw	0900h
+	dw	0997h
+	dw	0938h
+	dw	0941h
+	dw	0df9h
+	dw	0955h
+	dw	0955h
+	dw	0955h
+	dw	094bh
+	dw	08fbh
+	dw	08fch
+
+	inr	a
 	sta	X20fc
 	ret
 ;
@@ -1462,7 +1454,7 @@ X0a50:	mov	h,e
 	;; This is a table, use nops not orgs
 	nop
 	nop
-	;; org	0a53h
+	org	0a53h
 ;
 	mov	b,l
 	mov	d,d
