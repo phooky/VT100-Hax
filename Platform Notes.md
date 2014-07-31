@@ -56,7 +56,29 @@ RAM Map
 
 0x22bb through 0x22d0 appear to be unused!!!
 
-We are using ??? as our screensaver counter.
+Clearing out code space:
+------------------------
+
+Skipping the memory and checksum tests. :P
+This gives us from 0x3b - 0xb6, or 123 bytes-- plenty of room!
+
+Our memory map:
+---------------
+
+Screensaver should fade out over an average of 3 seconds, or ~180 vertical refreshes.
+Brightness 0x1f is basically 0, so let's say avg brightness is 0x10.
+That comes out to about 11 refreshes per step.
+
+ Start  |   End   |  Size  |  Description
+--------|---------|--------|-------------
+0x22c2  | 0x22c4  |   2B   | Vertical frames left until screensaver
+0x22c4  | 0x22c5  |   1B   | Vertical frames left until next brightness step down
+0x22c5  | 0x22c6  |   1B   | Current brightness step
+
+Functions:
+ Location | Purpose
+----------|--------------
+0xXXXX    | Reset vertical frames
 
 Setup Area
 
