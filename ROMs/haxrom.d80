@@ -1224,20 +1224,20 @@ X08d4:	sui	5		; subtract 5 from A and return if negative
 	xra	a		; zero A
 	pchl			; jump to address
 ;
-X08e5:	dw	0900h
-	dw	0997h
-	dw	0938h
-	dw	0941h
-	dw	0df9h
-	dw	0955h
-	dw	0955h
-	dw	0955h
+X08e5:	dw	X0900
+	dw	X0997		; immediate return
+	dw	X0938
+	dw	X0941
+	dw	0df9h		; MYSTERY ADDRESS: this isn't even in AVO!!!
+	dw	x0955
+	dw	X0955
+	dw	X0955
 	dw	094bh
-	dw	08fbh
-	dw	08fch
+	dw	X08fb
+	dw	X08fc
 
-	inr	a
-	sta	X20fc
+X08fb:	inr	a
+X08fc:	sta	X20fc
 	ret
 ;
 X0900:	lda	X21a5
@@ -1283,7 +1283,7 @@ X0938:	lxi	h,X2078
 	mov	m,a
 	ret
 ;
-	lxi	h,X20f8
+X0941:	lxi	h,X20f8
 	mov	a,m
 	ora	a
 	rz
@@ -1326,7 +1326,7 @@ X0989:	lda	X21c3
 	sta	X20f4
 	dcr	a
 	sta	X20f5
-	ret
+X0997:	ret
 ;
 X0998:	call	X101a
 	jmp	X1012
@@ -4203,7 +4203,7 @@ X1c9f:	mvi	m,7fh
 	ret
 ;
 lSETUP:	
-	db	'RC2014 A',0
+	db	'SET-UP A',0
 lEXIT:	
 	db	'TO EXIT PRESS ',022h,'SET-UP',022h,0
 	call	X1bba
@@ -4671,8 +4671,8 @@ X1fd4:	ora	a
 ;
 	nop
 
-	org	01fffh
-	db	075h
+	;; org	01fffh
+	;; db	075h
 
 ;
 ;	Miscellaneous equates
