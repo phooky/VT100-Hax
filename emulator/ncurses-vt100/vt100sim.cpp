@@ -166,11 +166,11 @@ void Vt100Sim::init() {
 BYTE Vt100Sim::ioIn(BYTE addr) {
   if (addr == 0x00) {
     uint8_t r = uart.read_data();
-    wprintw(msgWin,"PUSART RD DAT: %x\n", r);
+    //wprintw(msgWin,"PUSART RD DAT: %x\n", r);
     return r;
   } else if (addr == 0x01) {
     uint8_t r = uart.read_command();
-    wprintw(msgWin,"PUSART RD CMD: %x\n", r);
+    //wprintw(msgWin,"PUSART RD CMD: %x\n", r);
     return r;
   } else if (addr == 0x42) {
         // Read buffer flag
@@ -201,11 +201,11 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
 void Vt100Sim::ioOut(BYTE addr, BYTE data) {
     switch(addr) {
     case 0x00:
-      wprintw(msgWin,"PUSART DAT: %x\n", data);wrefresh(msgWin);
+      //wprintw(msgWin,"PUSART DAT: %x\n", data);wrefresh(msgWin);
       uart.write_data(data);
       break;
     case 0x01:
-      wprintw(msgWin,"PUSART CMD: %x\n", data);wrefresh(msgWin);
+      //wprintw(msgWin,"PUSART CMD: %x\n", data);wrefresh(msgWin);
       uart.write_command(data);
       break;
     case 0x82:
@@ -353,6 +353,13 @@ void Vt100Sim::run() {
       uint16_t pc = (uint16_t)(PC-ram);
       //wprintw(msgWin,"BP %d PC %d\n",breakpoints.size(),pc);wrefresh(msgWin);
       if (breakpoints.find(pc) != breakpoints.end()) {
+	wprintw(msgWin,"Breakpoint trace for %04x:\n",pc);
+	for (int i = 10; i > 1; i--) {
+	  uint16_t laddr = his[(HISIZE+h_next-i)%HISIZE].h_adr;
+	  wprintw(msgWin,"  PC %04x\n",laddr);
+	}
+	wrefresh(msgWin);
+	controlMode = true;
 	running = false;
       }
     } else {
@@ -447,7 +454,7 @@ void Vt100Sim::step()
     if (uart.clock()) {
       int_data |= 0xd7;
       int_int = 1;
-      wprintw(msgWin,"UART interrupt\n");wrefresh(msgWin);
+      //wprintw(msgWin,"UART interrupt\n");wrefresh(msgWin);
     }
   }
   if (dc11 && lba4.add_ticks(t)) {

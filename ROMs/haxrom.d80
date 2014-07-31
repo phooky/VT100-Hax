@@ -483,8 +483,6 @@ X0375:	ori	0ah
 	out	0a2h
 	ret
 ;
-	;; 0381 NOT OK
-	org	0381h
 X0381:	lda	X21a2
 	ora	a
 	jz	X0b63
@@ -1412,6 +1410,7 @@ X0a15:	lxi	h,X05e6		; HL = 0x05e6
 X0a18:	shld	X2140		; 0x2140 = 0xe605
 	ret
 ;
+;;; This is a table of some sort.
 X0a1c:	mov	b,c
 	sbb	e
 	ldax	b
@@ -1460,8 +1459,10 @@ X0a1c:	mov	b,c
 	nop
 X0a50:	mov	h,e
 	nop
-;
-	org	0a53h
+	;; This is a table, use nops not orgs
+	nop
+	nop
+	;; org	0a53h
 ;
 	mov	b,l
 	mov	d,d
@@ -3948,6 +3949,8 @@ X1ae8:	mov	a,b
 	sta	X20f4
 	lda	X20f8
 	jmp	X1eea
+;;;  Below is what appears to be a bunch of dead code-- unreferenced functions (meant for use
+;;; by an expansion rom or patch, perhaps?).
 ;
 	call	X1b52
 	call	X0dec
