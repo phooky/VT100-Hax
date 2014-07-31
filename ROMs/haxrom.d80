@@ -55,8 +55,15 @@ in_vrt:
 	jnz	no_ss
 	cmp	l
 	jnz	no_ss
-	;; screensaver active
-yes_ss:	
+	;; screensaver already active? SSbrt will be 0xff if not
+	lda	SSbrt
+	inr	a
+	jnz	end_ss
+yes_ss:
+	lda	021a3h
+	sta	SSbrt
+	mvi	a, 1fh		; turn off video
+	sta	021a3h
 	jmp	end_ss
 no_ss:
 	;; probably fix brightness here
@@ -70,23 +77,50 @@ in_rcv:
 	call	ss_evt
 	jmp	f_rcv
 in_kb:
+	push	psw
+	in	82h		; Read from keyboard port
+	cpi	7fh		; Check if it's a real character
+	jz	no_chr
+	call	ss_evt
+no_chr:	
+	pop	psw
 	jmp	f_kb
 
 	;; Called when there is a screensaver reset event, such as a keystroke or a
 	;; incoming character. 0x3fff is about 4.5 minutes
 ss_evt:
+	push 	psw
 	push	h
-	lxi	h,00fffh	; lower for testing
+	xra	a
+	lhld	SSvfl
+	;; Check for zero
+	cmp	h
+	jnz	no_ev
+	cmp	l
+	jnz	no_ev
+	;; screensaver is active; restore
+yes_ev:
+	lda	SSbrt
+	sta	021a3h
+	mvi	a,0ffh
+	sta	SSbrt
+no_ev:	
+	lxi	h,003ffh	; lower for testing
 	shld	SSvfl
 	pop	h
+	pop	psw
 	ret
 	
-	org	00b6h
+	org	00abh
 init:	di
 	mvi	d,0    ; no errors
-;;;  Memory test is done: should be at 00b9 now
+;;;  Memory test is done: should be at 00b9 now (adjust now for later stuff)
 	push	d     
 	call	X02a4		; zero scratch and screen mem
+	lxi	h,03ffh
+	shld	SSvfl
+	mvi	a,0ffh
+	sta	SSbrt
 	call	X02eb		; Set a number of scratch values to fixed values
 	call	X175b		; .... more memory initialization
 	pop	d
@@ -4818,7 +4852,7 @@ Xff01	equ	0ff01h
 	;; Screensaver memory locations
 SSvfl	equ	022c2h
 SSbfl	equ	022c4h
-SSbrt 	equ	022c5h
+SSbrt 	equ	022c5h		; backup of brightness
 ;
 	end
 ;
