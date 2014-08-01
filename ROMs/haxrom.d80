@@ -51,34 +51,39 @@ X003d:	di
 	out	62h		; 0x0f to NVR latch
 	cma			; invert A (0xf0)
 	out	42h		; 0xf0 to brightness
-;;; Run checksum on each 2K ROM, indicating with
-;;; the keyboard LEDs which is being scanned.
-;;; The # of the chip being scanned is stored in B.
-	xra	a		; zero A
-	mov	d,a		; zero D, L, H
-	mov	l,a
-	mov	h,a
-csrom:	inr	a		; next 2K ROM
-	mov	b,a		; store the current ROM # in B
-	out	82h		; show current ROM on LEDs
-	mvi	c,8		; Checksum over 8 256B blocks
-X004f:	rlc			;    Rotate A left
-	xra	m		;    A <- A ^ memory
-	inr	l		;    next memory address
-	jnz	X004f		;    ... repeat until end of block
-	inr	h		; next block
-	dcr	c		; decrement block count
-	jnz	X004f		; ... repeat until end of chip
-	ora	a		; Check the value of the accumulator
-X005b:	jnz	X005b		; If it's not zero, hang forever
-	mov	a,b		; Put the ROM # back in the accumulator
-	cpi	4		; If it's not 4...
-	jnz	csrom		; repeat for the next ROM
-	inr	a		
-	out	82h		; write 5 to LEDs
+;;; Modification 1: Skip checksum altogether
+ 	xra	a		; zero A
+ 	mov	d,a		; zero D, L, H
+ 	mov	l,a
+ 	mov	h,a
+	jmp	zeros
+
+;; csrom:	inr	a		; next 2K ROM
+;; 	mov	b,a		; store the current ROM # in B
+;; 	out	82h		; show current ROM on LEDs
+;; 	mvi	c,8		; Checksum over 8 256B blocks
+;; X004f:	rlc			;    Rotate A left
+;; 	xra	m		;    A <- A ^ memory
+;; 	inr	l		;    next memory address
+;; 	jnz	X004f		;    ... repeat until end of block
+;; 	inr	h		; next block
+;; 	dcr	c		; decrement block count
+;; 	jnz	X004f		; ... repeat until end of chip
+;; 	ora	a		; Check the value of the accumulator
+;; X005b:	jnz	X005b		; If it's not zero, hang forever
+;; 	mov	a,b		; Put the ROM # back in the accumulator
+;; 	cpi	4		; If it's not 4...
+;; 	jnz	csrom		; repeat for the next ROM
+;; 	inr	a		
+;; 	out	82h		; write 5 to LEDs
+
+	;; ... code goes here ...
+	
 ;;; Zero all RAM. C gets the high byte of the address of the top of
 ;;; RAM, HL is loaded with it, and it zeros memory all the way down,
 ;;; leaving the start of RAM in HL
+	org	67h
+zeros:
 	mvi	c,0aah		; Test pattern: 0xaa
 	mvi	b,2ch		; 0x2c is the top of RAM on the basic board
 	in	42h		;
@@ -92,40 +97,47 @@ X0076:	mvi	m,0		; M <- 0
 	mov	a,h		; a <- h
 	cpi	1fh		; compare to 1f (top of ROM)
 	jnz	X0076		; continue to zero if not at ROM
-	inx	h		; increment HL; now
+
+	inr	l
+	mov	h,b
+	jmp	aftrmt
+
 ;;; From start of RAM, test that it's all zero
-X0080:	mov	a,m		; read a byte of memory
-	ora	a
-	jz	X0090		; if it's zero, skip ahead
-	ani	0fh		
-	mov	a,h
-	jnz	X00a1
-	cpi	30h
-	jc	X00a1
-X0090:	mov	m,c		; run test pattern through ram
-	mov	a,m
-	xra	c
-	jz	X00a8		; jump to 00a8 if ok
-	ani	0fh
-	mov	a,h
-	jnz	X00a1
-	cpi	30h
-	jnc	X00a8
-X00a1:	mvi	d,1
-	cpi	2ch
-X00a5:	jc	X00a5		; Hang if non-AVO memory
-X00a8:	xra	a
-	inx	h
-	ora	l
-	jnz	X0080
-	ora	h
-	cmp	b
-	jnz	X0080
-	;; Repeat mem test with pattern 0x55
-	mov	a,c
-	rlc
-	mov	c,a
-	jc	X0074
+;; X0080:	mov	a,m		; read a byte of memory
+;; 	ora	a
+;; 	jz	X0090		; if it's zero, skip ahead
+;; 	ani	0fh		
+;; 	mov	a,h
+;; 	jnz	X00a1		; err
+;; 	cpi	30h
+;; 	jc	X00a1		; err
+;; X0090:	mov	m,c		; run test pattern through ram
+;; 	mov	a,m
+;; 	xra	c
+;; 	jz	X00a8		; jump to 00a8 if ok
+;; 	ani	0fh
+;; 	mov	a,h
+;; 	jnz	X00a1		; err
+;; 	cpi	30h
+;; 	jnc	X00a8		; ok
+;; X00a1:	mvi	d,1
+;; 	cpi	2ch
+;; X00a5:	jc	X00a5		; Hang if non-AVO memory
+;; X00a8:	xra	a
+;; 	inx	h
+;; 	ora	l
+;; 	jnz	X0080
+;; 	ora	h
+;; 	cmp	b
+;; 	jnz	X0080
+;; 	;; Repeat mem test with pattern 0x55
+;; 	mov	a,c
+;; 	rlc
+;; 	mov	c,a
+;; 	jc	X0074
+	
+aftrmt:
+	org	0b9h
 ;;;  Memory test is done
 	push	d
 	call	X02a4		; zero scratch and screen mem
@@ -1229,7 +1241,7 @@ X08e5:	dw	X0900
 	dw	X0938
 	dw	X0941
 	dw	0df9h		; MYSTERY ADDRESS: this isn't even in AVO!!!
-	dw	x0955
+	dw	X0955
 	dw	X0955
 	dw	X0955
 	dw	094bh
