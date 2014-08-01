@@ -11,35 +11,35 @@ boot:	di
 
 	org	8
 ;;; IV 0x08: kbd
-ivK:	call	f_kb		; call keyboard handler
+ivK:	call	in_kb		; call keyboard handler
 	ei
 	ret
 	;; FREE 3B
 	org	10h
 ;;; IV 0x10: recv
-ivR:	call	f_rcv		; call receiver handler
+ivR:	call	in_rcv		; call receiver handler
 	ei
 	ret
 	;; FREE 3B
 	org	18h
 ;;; IV 0x18: recv & kbd
-ivKR:	call	f_rcv		; call receiver handler
-	call	f_kb		; call keyboard handler
+ivKR:	call	in_rcv		; call receiver handler
+	call	in_kb		; call keyboard handler
 	ei
 	ret
 ;;; IV 0x20: vertical freq.
-ivV:	call	f_vrt		; call vertical handler
+ivV:	call	in_vrt		; call vertical handler
 	ret
 	;; FREE 4B
 	org	28h
 ;;; IV 0x28: vertical freq. & kbd (kbd ignored)
-	call	f_vrt		; call vertical handler
+	call	in_vrt		; call vertical handler
 	ret
 	;; FREE 4B
 	org	30h
 ;;; IV 0x30: vertical freq. & recv
-ivVR:	call	f_rcv		; call receiver handler
-	call	f_vrt		; call vertical handler
+ivVR:	call	in_rcv		; call receiver handler
+	call	in_vrt		; call vertical handler
 	ei
 	ret
 ;;; IV 0x30: vertical freq. & recv & kbd (kbd ignored)
@@ -56,8 +56,68 @@ X003d:	di
  	mov	d,a		; zero D, L, H
  	mov	l,a
  	mov	h,a
-	jmp	zeros
+	mvi	c,0aah		; Test pattern: 0xaa
+	mvi	b,2ch		; 0x2c is the top of RAM on the basic board
+	in	42h		;
+	ani	2		; flags buffer &= 0x02 : is AVO installed?
+	jnz	X0074		; if bit 2 is not set, AVO is installed
+	mvi	b,40h		; 0x40 is the top of RAM on the AVO
+X0074:	mov	h,b		; load HL with top of RAM
+	dcx	h		; dec HL
+X0076:	mvi	m,0		; M <- 0
+	dcx	h		; dec HL
+	mov	a,h		; a <- h
+	cpi	1fh		; compare to 1f (top of ROM)
+	jnz	X0076		; continue to zero if not at ROM
 
+	inr	l
+	mov	h,b
+	jmp	aftrmt
+
+in_kb:
+	push	psw
+	push	h
+	in	82h		; Read from keyboard port
+	cpi	7fh		; Check if it's a real character
+	cnz	lv_ss
+	pop	h
+	pop	psw
+	jmp	f_kb
+in_rcv:
+	push	psw
+	push	h
+	call	lv_ss
+	pop	h
+	pop	psw
+	jmp	f_rcv
+
+in_vrt:
+	push	psw
+	push	h
+	lda	SSst
+	ani	02h		; are we in the sceensaver?
+	jnz	inv_dn		; skip rest if so
+	lhld	SSvfl
+	cmp	h
+	jnz	no_ss
+	cmp	l
+	jnz	no_ss
+	;; The counter is at zero; time to enter the screensaver
+	mvi	a,02h
+	sta	SSst
+	lhld	2004h
+	shld	SSprv
+	lxi	h,0370h
+	shld	2004h
+	jmp	inv_dn
+no_ss:
+	dcx	h
+	shld	SSvfl
+inv_dn:	
+	pop	h
+	pop	psw
+	jmp	f_vrt
+	
 ;; csrom:	inr	a		; next 2K ROM
 ;; 	mov	b,a		; store the current ROM # in B
 ;; 	out	82h		; show current ROM on LEDs
@@ -82,25 +142,6 @@ X003d:	di
 ;;; Zero all RAM. C gets the high byte of the address of the top of
 ;;; RAM, HL is loaded with it, and it zeros memory all the way down,
 ;;; leaving the start of RAM in HL
-	org	67h
-zeros:
-	mvi	c,0aah		; Test pattern: 0xaa
-	mvi	b,2ch		; 0x2c is the top of RAM on the basic board
-	in	42h		;
-	ani	2		; flags buffer &= 0x02 : is AVO installed?
-	jnz	X0074		; if bit 2 is not set, AVO is installed
-	mvi	b,40h		; 0x40 is the top of RAM on the AVO
-X0074:	mov	h,b		; load HL with top of RAM
-	dcx	h		; dec HL
-X0076:	mvi	m,0		; M <- 0
-	dcx	h		; dec HL
-	mov	a,h		; a <- h
-	cpi	1fh		; compare to 1f (top of ROM)
-	jnz	X0076		; continue to zero if not at ROM
-
-	inr	l
-	mov	h,b
-	jmp	aftrmt
 
 ;;; From start of RAM, test that it's all zero
 ;; X0080:	mov	a,m		; read a byte of memory
@@ -137,12 +178,13 @@ X0076:	mvi	m,0		; M <- 0
 ;; 	jc	X0074
 	
 aftrmt:
-	org	0b9h
+	org	0b6h
 ;;;  Memory test is done
 	push	d
 	call	X02a4		; zero scratch and screen mem
 	call	X02eb		; Set a number of scratch values to fixed values
 	call	X175b		; .... more memory initialization
+	call	initss
 	pop	d
 X00c4:	jz	X00cb
 	mov	a,d
@@ -4681,7 +4723,23 @@ X1fd4:	ora	a
 	mov	a,c
 	ret
 ;
-	nop
+	;; Reset counter to top; reset state to 0
+	;; Touches HL, A
+initss:
+	lxi	h,03ffh
+	shld	SSvfl
+	xra	a
+	sta	SSst
+	ret
+	;; If in screensaver, leave screensaver
+	;; Touches HL, A
+lv_ss:
+	lda	SSst
+	ani	02h
+	jz	initss
+	lhld	SSprv
+	shld	2004h
+	jmp	initss
 
 	;; org	01fffh
 	;; db	075h
@@ -4868,6 +4926,14 @@ Xcd0b	equ	0cd0bh
 Xd0f2	equ	0d0f2h
 Xfe1a	equ	0fe1ah
 Xff01	equ	0ff01h
+;
+	;; Screensaver memory locations
+SSvfl	equ	022c2h
+SSbfl	equ	022c4h
+SSst	equ	022c5h
+SSprv	equ	022c6h
+SSbrt 	equ	022c8h		; backup of brightness
+	
 ;
 	end
 ;
