@@ -45,11 +45,14 @@ void PUSART::write_command(uint8_t cmd) {
     if (cmd & 1<<6) { // INTERNAL RESET
       mode_select_mode = true;
     }
-      
+    // Command 0x2f is BREAK
+    // Command 0x2d is hangup
   }
 }
 
 void PUSART::write_data(uint8_t dat) {
+  xoff = (dat == '\023');
+  if (dat == '\023' || dat == '\021') return;
   write(pty_fd,&dat,1);
 }
 
@@ -64,6 +67,7 @@ uint8_t PUSART::read_command() {
 
 bool PUSART::clock() {
   char c;
+  if (has_rx_rdy || xoff) return false;
   int i = read(pty_fd,&c,1);
   if (i != -1) {
     data = c;
