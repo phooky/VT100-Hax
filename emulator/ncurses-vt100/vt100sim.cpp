@@ -121,15 +121,11 @@ Signal uartclk(5000); // uart clock is super arbitrary
 
 void Vt100Sim::init() {
     i_flag = 1;
-    f_flag = 10;
+    f_flag = 0;
     m_flag = 0;
     tmax = f_flag*10000;
     cpu = I8080;
     wprintw(msgWin,"\nRelease %s, %s\n", RELEASE, COPYR);
-    if (f_flag > 0)
-      wprintw(msgWin,"\nCPU speed is %d MHz\n", f_flag);
-    else
-      wprintw(msgWin,"\nCPU speed is unlimited\n");
 #ifdef	USR_COM
     wprintw(msgWin,"\n%s Release %s, %s\n", USR_COM, USR_REL, USR_CPR);
 #endif
@@ -340,10 +336,12 @@ bool hexParse(char* buf, int n, uint16_t& d) {
 }
 
 void Vt100Sim::run() {
+  const int CPUHZ = 1000000;
   signal(SIGALRM,sig_alrm);
   ualarm(5000,5000);
   int steps = 0;
   needsUpdate = true;
+  gettimeofday(&last_sync, 0);
   while(1) {
     if (running) {
       step();
@@ -362,8 +360,26 @@ void Vt100Sim::run() {
 	controlMode = true;
 	running = false;
       }
+      if (rt_ticks > CPUHZ/100) {
+        struct timeval now;
+	gettimeofday(&now, 0);
+	long long clock_usec =
+	    (now.tv_sec-last_sync.tv_sec) * 1000000 +
+	    (now.tv_usec-last_sync.tv_usec) ;
+	long long cpu_usec = rt_ticks * 1000000 / CPUHZ;
+
+	if (cpu_usec > clock_usec+10000) {
+	  usleep(cpu_usec - clock_usec);
+	  last_sync = now;
+	  rt_ticks -= clock_usec * CPUHZ / 1000000;
+	} else {
+	  /* EMU is too slow ? */
+	}
+      }
     } else {
       usleep(5000);
+      gettimeofday(&last_sync, 0);
+      rt_ticks = 0;
     }
     if (sigAlrm && needsUpdate) { sigAlrm = 0; update();}
     int ch = getch();
@@ -450,6 +466,7 @@ void Vt100Sim::step()
   cpu_8080();
   if (int_int == 0) { int_data = 0xc7; }
   const uint16_t t = t_ticks - start;
+  rt_ticks += t;
   if (uartclk.add_ticks(t)) {
     if (uart.clock()) {
       int_data |= 0xd7;
