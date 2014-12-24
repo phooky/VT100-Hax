@@ -34,7 +34,7 @@ WINDOW* statusBar;
 WINDOW* bpWin;
 
 Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputMode(false),
-							dc11(true), dc12(false), controlMode(true)
+							dc11(true), dc12(false), controlMode(!running)
 {
   this->romPath = romPath;
 
