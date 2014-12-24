@@ -78,6 +78,7 @@ void NVR::clock(bool rising) {
         uint8_t addr = compute_addr(address_reg);
         contents[addr] = data_reg & 0x3fff;
         //wprintw(msgWin,"NVR write %x <- %x\n",addr,data_reg);wrefresh(msgWin);
+	save( (char*) /* CPP is Dumb */ "/tmp/vt100.nvr");
     }
         break;
     case READ:
@@ -108,6 +109,11 @@ void NVR::load(char* path) {
 
 void NVR::save(char* path) {
     FILE* f = fopen(path,"wb");
-    fwrite(contents,sizeof(uint16_t),100,f);
+    // fwrite(contents,sizeof(uint16_t),100,f);
+    int i;
+    for(i=0; i<100; i++) {
+	fprintf(f, "0x%04x,", contents[i]);
+	if (i % 10 == 9) fprintf(f, "\n"); else fprintf(f, " ");
+    }
     fclose(f);
 }
