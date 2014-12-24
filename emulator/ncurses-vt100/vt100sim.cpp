@@ -53,12 +53,17 @@ Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputM
   // Status bar: bottom line of the screen
   statusBar = subwin(stdscr,1,mx,--my,0);
   const int vht = std::min(27,my-12); // video area height (max 27 rows)
-  const int memw = 7 + 32*3 + 2; // memory area width: big enough for 32B across
+  int memw = 7 + 32*3 - 1 + 2; // memory area width: big enough for 32B across
   const int regw = 12;
   const int regh = 8;
+
+  if (memw > mx -regw - 20) memw = 7 + 16*3 - 1 + 2; // Okay, make that 16
   const int msgw = mx - (regw+memw); // message area: mx - memory area - register area (12)
 
-  vidWin = subwin(stdscr,vht,mx,my-vht,0);
+  if (mx > 134)
+    vidWin = subwin(stdscr,vht,134,my-vht,0);
+  else
+    vidWin = subwin(stdscr,vht,mx,my-vht,0);
   regWin = subwin(stdscr,regh,regw,0,0);
   bpWin = subwin(stdscr,my-(vht+regh),regw,regh,0);
   memWin = subwin(stdscr,my-vht,memw,0,regw);
@@ -75,6 +80,8 @@ Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputM
   mvwprintw(bpWin,0,1,"Brkpts");
   init_pair(1,COLOR_RED,COLOR_BLACK);
   init_pair(2,COLOR_BLUE,COLOR_BLACK);
+  init_pair(3,COLOR_YELLOW,COLOR_BLACK);
+  init_pair(4,COLOR_GREEN,COLOR_BLACK);
   wattron(regWin,COLOR_PAIR(1));
   wattron(memWin,COLOR_PAIR(2));
   refresh();
@@ -158,15 +165,15 @@ void Vt100Sim::init() {
     // We are always running the CPU in single-step mode so we can do the clock toggles when necessary.
     cpu_state = SINGLE_STEP;
 
-    wprintw(msgWin,"Function Key mapping:\n");
+    wprintw(msgWin,"Function Key map:\n");
     wprintw(msgWin,"F1..F4 -> PF1..PF4\n");
     wprintw(msgWin,"F5 -> Linefeed\n");
     wprintw(msgWin,"F6 -> Break\n");
-    wprintw(msgWin,"F7 -> Shift-Break\n");
+    wprintw(msgWin,"F7 -> S-Break\n");
     wprintw(msgWin,"F8 -> Escape\n");
     wprintw(msgWin,"F9 -> Setup\n");
-    wprintw(msgWin,"F10 -> Command Mode\n");
-    wprintw(msgWin,"F11 -> Keycode generate\n");
+    wprintw(msgWin,"F10 -> Cmd Mode\n");
+    wprintw(msgWin,"F11 -> Keycodes\n");
     wrefresh(msgWin);
 }
 
@@ -618,16 +625,19 @@ void Vt100Sim::dispRegisters() {
 
 void Vt100Sim::dispVideo() {
   uint16_t start = 0x2000;
+  int my,mx;
+  getmaxyx(vidWin,my,mx);
   werase(vidWin);
-  box(vidWin,0,0);
+  if (mx>=134) box(vidWin,0,0);
   mvwprintw(vidWin,0,1,"Video [bright %x]",bright);
+  wattron(vidWin,COLOR_PAIR(4));
   uint8_t y = -2;
   for (uint8_t i = 1; i < 100; i++) {
         char* p = (char*)ram + start;
         char* maxp = p + 133;
 	//if (*p != 0x7f) y++;
 	y++;
-	wmove(vidWin,y,1);
+	wmove(vidWin,y,(mx>=134));
         while (*p != 0x7f && p != maxp) {
             unsigned char c = *(p++);
 	    if (y > 0) {
@@ -639,7 +649,7 @@ void Vt100Sim::dispVideo() {
 		  c-=128;
 		  wattron(vidWin,A_REVERSE);
 		}
-		if (c < 7) { waddch(vidWin,' '); } 
+		if (c < 32) { waddch(vidWin,NCURSES_ACS(0x5F+c)); }
 		else { waddch(vidWin,c); }
 		if (inverse) wattroff(vidWin,A_REVERSE);
 		//wprintw(vidWin,"%02x",c);
@@ -659,15 +669,16 @@ void Vt100Sim::dispVideo() {
         if (start == next) break;
         start = next;
     }
+  wattroff(vidWin,COLOR_PAIR(4));
   wrefresh(vidWin);
 }
 
 void displayFlag(const char* text, bool on) {
   if (on) {
-    wattron(statusBar,COLOR_PAIR(2));
+    wattron(statusBar,COLOR_PAIR(3));
     wattron(statusBar,A_BOLD);
   } else {
-    wattron(statusBar,COLOR_PAIR(1));
+    wattron(statusBar,COLOR_PAIR(2));
     wattroff(statusBar,A_BOLD);
   }
   wprintw(statusBar,text);
@@ -684,8 +695,8 @@ void Vt100Sim::dispStatus() {
   getmaxyx(statusBar,my,mx);
   wmove(statusBar,0,mx-lwidth);
   uint8_t flags = kbd.get_status();
-  displayFlag(ledNames[0], (flags & (1<<5)) != 0 );
-  displayFlag(ledNames[1], (flags & (1<<5)) == 0 );
+  displayFlag(ledNames[0], (flags & (1<<5)) == 0 );
+  displayFlag(ledNames[1], (flags & (1<<5)) != 0 );
   displayFlag(ledNames[2], (flags & (1<<4)) != 0 );
   displayFlag(ledNames[3], (flags & (1<<3)) != 0 );
   displayFlag(ledNames[4], (flags & (1<<2)) != 0 );
