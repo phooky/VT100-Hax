@@ -13,6 +13,7 @@ private:
   int pty_fd;
   uint8_t data;
   bool has_rx_rdy;
+  bool xoff;
 public:
   PUSART();
   // High if ready to transmit a byte

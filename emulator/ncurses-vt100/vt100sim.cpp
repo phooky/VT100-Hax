@@ -34,7 +34,7 @@ WINDOW* statusBar;
 WINDOW* bpWin;
 
 Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputMode(false),
-							dc11(true), dc12(false), controlMode(true)
+							dc11(true), dc12(false), controlMode(!running)
 {
   this->romPath = romPath;
 
@@ -44,7 +44,7 @@ Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputM
   int my,mx;
   getmaxyx(stdscr,my,mx);
   start_color();
-  cbreak();
+  raw();
   noecho();
   keypad(stdscr,1);
   nodelay(stdscr,1);
@@ -53,12 +53,17 @@ Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputM
   // Status bar: bottom line of the screen
   statusBar = subwin(stdscr,1,mx,--my,0);
   const int vht = std::min(27,my-12); // video area height (max 27 rows)
-  const int memw = 7 + 32*3 + 2; // memory area width: big enough for 32B across
+  int memw = 7 + 32*3 - 1 + 2; // memory area width: big enough for 32B across
   const int regw = 12;
   const int regh = 8;
+
+  if (memw > mx -regw - 20) memw = 7 + 16*3 - 1 + 2; // Okay, make that 16
   const int msgw = mx - (regw+memw); // message area: mx - memory area - register area (12)
 
-  vidWin = subwin(stdscr,vht,mx,my-vht,0);
+  if (mx > 134)
+    vidWin = subwin(stdscr,vht,134,my-vht,0);
+  else
+    vidWin = subwin(stdscr,vht,mx,my-vht,0);
   regWin = subwin(stdscr,regh,regw,0,0);
   bpWin = subwin(stdscr,my-(vht+regh),regw,regh,0);
   memWin = subwin(stdscr,my-vht,memw,0,regw);
@@ -75,6 +80,8 @@ Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputM
   mvwprintw(bpWin,0,1,"Brkpts");
   init_pair(1,COLOR_RED,COLOR_BLACK);
   init_pair(2,COLOR_BLUE,COLOR_BLACK);
+  init_pair(3,COLOR_YELLOW,COLOR_BLACK);
+  init_pair(4,COLOR_GREEN,COLOR_BLACK);
   wattron(regWin,COLOR_PAIR(1));
   wattron(memWin,COLOR_PAIR(2));
   refresh();
@@ -121,15 +128,11 @@ Signal uartclk(5000); // uart clock is super arbitrary
 
 void Vt100Sim::init() {
     i_flag = 1;
-    f_flag = 10;
+    f_flag = 0;
     m_flag = 0;
     tmax = f_flag*10000;
     cpu = I8080;
     wprintw(msgWin,"\nRelease %s, %s\n", RELEASE, COPYR);
-    if (f_flag > 0)
-      wprintw(msgWin,"\nCPU speed is %d MHz\n", f_flag);
-    else
-      wprintw(msgWin,"\nCPU speed is unlimited\n");
 #ifdef	USR_COM
     wprintw(msgWin,"\n%s Release %s, %s\n", USR_COM, USR_REL, USR_CPR);
 #endif
@@ -161,6 +164,17 @@ void Vt100Sim::init() {
 
     // We are always running the CPU in single-step mode so we can do the clock toggles when necessary.
     cpu_state = SINGLE_STEP;
+
+    wprintw(msgWin,"Function Key map:\n");
+    wprintw(msgWin,"F1..F4 -> PF1..PF4\n");
+    wprintw(msgWin,"F5 -> Linefeed\n");
+    wprintw(msgWin,"F6 -> Break\n");
+    wprintw(msgWin,"F7 -> S-Break\n");
+    wprintw(msgWin,"F8 -> Escape\n");
+    wprintw(msgWin,"F9 -> Setup\n");
+    wprintw(msgWin,"F10 -> Cmd Mode\n");
+    wprintw(msgWin,"F11 -> Keycodes\n");
+    wrefresh(msgWin);
 }
 
 BYTE Vt100Sim::ioIn(BYTE addr) {
@@ -238,9 +252,10 @@ volatile sig_atomic_t sigAlrm = 0;
 
 std::map<int,uint8_t> make_code_map() {
   std::map<int,uint8_t> m;
+  // 0x01, 0x02 (both) -> del
   m[KEY_DC] = 0x03;
-  m[KEY_ENTER] = 0x04;
-  m['\r'] = 0x04;
+  // ??? m[KEY_ENTER] = 0x04;
+  // 0x04 -> nul
   m['p'] = 0x05;
   m['o'] = 0x06;
   m['y'] = 0x07;
@@ -248,7 +263,12 @@ std::map<int,uint8_t> make_code_map() {
   m['w'] = 0x09;
   m['q'] = 0x0a;
 
+  // 0x0b, 0x0c, 0x0d, 0x0e, 0x0f (Mirror of next 5)
+
   m[KEY_RIGHT] = 0x10;
+  // 0x11 -> nul
+  // 0x12 -> nul
+  // 0x13 -> nul
   m[']'] = 0x14; m['}'] = 0x94;
   m['['] = 0x15; m['{'] = 0x95;
   m['i'] = 0x16;
@@ -257,16 +277,22 @@ std::map<int,uint8_t> make_code_map() {
   m['e'] = 0x19;
   m['1'] = 0x1a; m['!'] = 0x9a;
 
+  // 0x1b, 0x1c, 0x1d, 0x1e, 0x1f (Mirror of next 5)
+
   m[KEY_LEFT] = 0x20;
+  // 0x21 -> nul
   m[KEY_DOWN] = 0x22;
-  m[KEY_BREAK] = 0x23;
+  m[KEY_BREAK] = 0x23; m[KEY_F(6)] = 0x23; m[KEY_F(7)] = 0xA3;
+
   m['`'] = 0x24; m['~'] = 0xa4;
   m['-'] = 0x25; m['_'] = 0xa5;
   m['9'] = 0x26; m['('] = 0xa6;
   m['7'] = 0x27; m['&'] = 0xa7;
   m['4'] = 0x28; m['$'] = 0xa8;
   m['3'] = 0x29; m['#'] = 0xa9;
-  m[KEY_CANCEL] = 0x2a;
+  m[KEY_CANCEL] = 0x2a;	m[KEY_F(8)] = 0x2a; // Escape Key
+
+  // 0x2b, 0x2c, 0x2d, 0x2e, 0x2f (Mirror of next 5)
 
   m[KEY_UP] = 0x30;
   m[KEY_F(3)] = 0x31;
@@ -280,9 +306,13 @@ std::map<int,uint8_t> make_code_map() {
   m['2'] = 0x39; m['@'] = 0xb9;
   m['\t'] = 0x3a;
 
+  // 0x3b, 0x3c, 0x3d, 0x3e, 0x3f (Mirror of next 5)
+
+  // 0x40 -> '7'	(Keypad ^[Ow)
   m[KEY_F(4)] = 0x41;
   m[KEY_F(2)] = 0x42;
-  m['\n'] = 0x44;
+  // 0x43 -> '0'
+  m[KEY_F(5)] = 0x44; // Linefeed character:  m['\n'] = 0x44;
   m['\\'] = 0x45; m['|'] = 0xc5;
   m['l'] = 0x46;
   m['k'] = 0x47;
@@ -290,6 +320,13 @@ std::map<int,uint8_t> make_code_map() {
   m['f'] = 0x49;
   m['a'] = 0x4a;
 
+  // 0x4b, 0x4c, 0x4d, 0x4e, 0x2f (Mirror of next 5)
+
+  // 0x50 -> '8'    (Keypad ^[Ox)
+  // 0x51 -> ^M	    (Keypad Enter)
+  // 0x52 -> '2'
+  // 0x53 -> '1'
+  // 0x54 -> nul
   m['\''] = 0x55; m['"'] = 0xd5;
   m[';'] = 0x56; m[':'] = 0xd6;
   m['j'] = 0x57;
@@ -297,21 +334,42 @@ std::map<int,uint8_t> make_code_map() {
   m['d'] = 0x59;
   m['s'] = 0x5a;
 
+  // 0x5b, 0x5c, 0x5d, 0x5e, 0x5f
+
+  // 0x60 -> '.'
+  // 0x61 -> ','
+  // 0x62 -> '5'
+  // 0x63 -> '4'
+  // 0x64 -> ^M	    (Return Key)
+  m['\r'] = 0x64; m['\n'] = 0x64; // Curses seems to remap \r to \n unconditionally.
   m['.'] = 0x65; m['>'] = 0xe5;
   m[','] = 0x66; m['<'] = 0xe6;
   m['n'] = 0x67;
   m['b'] = 0x68;
   m['x'] = 0x69;
+  // 0x6a -> NoSCROLL
 
+  // 0x6b, 0x6c, 0x6d, 0x6e, 0x6f (Mirror of next 5)
+
+  // 0x70 -> '9'
+  // 0x71 -> '3'
+  // 0x72 -> '6'
+  // 0x73 -> '-'
+  // 0x74 -> nul
   m['/'] = 0x75; m['?'] = 0xf5;
   m['m'] = 0x76;
   m[' '] = 0x77;
   m['v'] = 0x78;
   m['c'] = 0x79;
   m['z'] = 0x7a;
-  
+
   // setup
-  m['`'] = 0x7b; m['~'] = 0x7b;
+  m[KEY_F(9)] = 0x7b;
+
+  // 0x7c   Control Key
+  // 0x7d   Shift Key
+  // 0x7e
+  // 0x7f
 
   for (int i = 0; i < 26; i++) {
     m['A'+i] = m['a'+i] | 0x80;
@@ -340,10 +398,12 @@ bool hexParse(char* buf, int n, uint16_t& d) {
 }
 
 void Vt100Sim::run() {
+  const int CPUHZ = 1000000;
   signal(SIGALRM,sig_alrm);
   ualarm(5000,5000);
   int steps = 0;
   needsUpdate = true;
+  gettimeofday(&last_sync, 0);
   while(1) {
     if (running) {
       step();
@@ -362,13 +422,31 @@ void Vt100Sim::run() {
 	controlMode = true;
 	running = false;
       }
+      if (rt_ticks > CPUHZ/100) {
+        struct timeval now;
+	gettimeofday(&now, 0);
+	long long clock_usec =
+	    (now.tv_sec-last_sync.tv_sec) * 1000000 +
+	    (now.tv_usec-last_sync.tv_usec) ;
+	long long cpu_usec = rt_ticks * 1000000 / CPUHZ;
+
+	if (cpu_usec > clock_usec+10000) {
+	  usleep(cpu_usec - clock_usec);
+	  last_sync = now;
+	  rt_ticks -= clock_usec * CPUHZ / 1000000;
+	} else {
+	  /* EMU is too slow ? */
+	}
+      }
     } else {
       usleep(5000);
+      gettimeofday(&last_sync, 0);
+      rt_ticks = 0;
     }
     if (sigAlrm && needsUpdate) { sigAlrm = 0; update();}
     int ch = getch();
     if (ch != ERR) {
-      if (ch == 27) { // esc key
+      if (ch == KEY_F(10)) { // Control Mode key
 	controlMode = !controlMode;
 	dispStatus();
       } else if (controlMode) {
@@ -420,12 +498,41 @@ void Vt100Sim::run() {
 	}
       }
       else {
-	uint8_t kc = code[ch];
-	if (kc & 0x80) {
-	  keypress(0x7d);
-	  kc &= 0x7f;
+        static int kstat = 0, ksum = 0;
+	if (kstat || ch == KEY_F(11)) {
+	    if (ch == KEY_F(11)) {
+		kstat = 1; ksum = 0;
+	    } else if (ch == '\n' || ch == '\r') {
+		//wprintw(msgWin,"KC=%02x\n", ksum); wrefresh(msgWin);
+		if (ksum & 0x80) {
+		  keypress(0x7d);	// Shift Key
+		  ksum &= 0x7f;
+		}
+		if (ksum)
+		    keypress(ksum);
+		ksum = kstat = 0;
+	    } else if (ch >='0' && ch <='9') {
+		ksum = ksum * 10 + ch - '0';
+	    } else
+		kstat = 0;
+	} else {
+	    uint8_t kc = code[ch];
+	    if (kc == 0 && ch >= 0 && ch < 32) {
+		kc = code[ch+'`'];
+		if (kc) {
+	          //wprintw(msgWin,"KC=7c (Control)\n");
+		  keypress(0x7c);	// Control Key
+		}
+	    }
+	    if (kc & 0x80) {
+	      //wprintw(msgWin,"KC=7d (Shift)\n");
+	      keypress(0x7d);	// Shift Key
+	      kc &= 0x7f;
+	    }
+	    //wprintw(msgWin,"KC=%02x < %02x\n", kc, ch); wrefresh(msgWin);
+	    if (kc)
+	      keypress(kc);
 	}
-	keypress(kc);
       }
     }
   }
@@ -450,6 +557,7 @@ void Vt100Sim::step()
   cpu_8080();
   if (int_int == 0) { int_data = 0xc7; }
   const uint16_t t = t_ticks - start;
+  rt_ticks += t;
   if (uartclk.add_ticks(t)) {
     if (uart.clock()) {
       int_data |= 0xd7;
@@ -517,16 +625,19 @@ void Vt100Sim::dispRegisters() {
 
 void Vt100Sim::dispVideo() {
   uint16_t start = 0x2000;
+  int my,mx;
+  getmaxyx(vidWin,my,mx);
   werase(vidWin);
-  box(vidWin,0,0);
+  if (mx>=134) box(vidWin,0,0);
   mvwprintw(vidWin,0,1,"Video [bright %x]",bright);
+  wattron(vidWin,COLOR_PAIR(4));
   uint8_t y = -2;
   for (uint8_t i = 1; i < 100; i++) {
         char* p = (char*)ram + start;
         char* maxp = p + 133;
 	//if (*p != 0x7f) y++;
 	y++;
-	wmove(vidWin,y,1);
+	wmove(vidWin,y,(mx>=134));
         while (*p != 0x7f && p != maxp) {
             unsigned char c = *(p++);
 	    if (y > 0) {
@@ -538,7 +649,7 @@ void Vt100Sim::dispVideo() {
 		  c-=128;
 		  wattron(vidWin,A_REVERSE);
 		}
-		if (c < 7) { waddch(vidWin,' '); } 
+		if (c < 32) { waddch(vidWin,NCURSES_ACS(0x5F+c)); }
 		else { waddch(vidWin,c); }
 		if (inverse) wattroff(vidWin,A_REVERSE);
 		//wprintw(vidWin,"%02x",c);
@@ -558,15 +669,16 @@ void Vt100Sim::dispVideo() {
         if (start == next) break;
         start = next;
     }
+  wattroff(vidWin,COLOR_PAIR(4));
   wrefresh(vidWin);
 }
 
 void displayFlag(const char* text, bool on) {
   if (on) {
-    wattron(statusBar,COLOR_PAIR(2));
+    wattron(statusBar,COLOR_PAIR(3));
     wattron(statusBar,A_BOLD);
   } else {
-    wattron(statusBar,COLOR_PAIR(1));
+    wattron(statusBar,COLOR_PAIR(2));
     wattroff(statusBar,A_BOLD);
   }
   wprintw(statusBar,text);
@@ -583,8 +695,8 @@ void Vt100Sim::dispStatus() {
   getmaxyx(statusBar,my,mx);
   wmove(statusBar,0,mx-lwidth);
   uint8_t flags = kbd.get_status();
-  displayFlag(ledNames[0], (flags & (1<<5)) != 0 );
-  displayFlag(ledNames[1], (flags & (1<<5)) == 0 );
+  displayFlag(ledNames[0], (flags & (1<<5)) == 0 );
+  displayFlag(ledNames[1], (flags & (1<<5)) != 0 );
   displayFlag(ledNames[2], (flags & (1<<4)) != 0 );
   displayFlag(ledNames[3], (flags & (1<<3)) != 0 );
   displayFlag(ledNames[4], (flags & (1<<2)) != 0 );

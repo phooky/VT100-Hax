@@ -6,6 +6,7 @@
 #include "pusart.h"
 #include <stdint.h>
 #include <set>
+#include <sys/time.h>
 
 extern "C" {
 #include "8080/sim.h"
@@ -31,6 +32,8 @@ private:
   std::set<uint16_t> breakpoints;
   bool dc11, dc12;
   bool controlMode;
+  long long rt_ticks;
+  struct timeval last_sync;
 public:
   void getString(const char* prompt, char* buffer, uint8_t sz);
   void step();
