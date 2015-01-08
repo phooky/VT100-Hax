@@ -30,6 +30,7 @@ private:
   bool inputMode;
   bool needsUpdate;
   std::set<uint16_t> breakpoints;
+  bool has_breakpoints;
   bool dc11, dc12;
   bool controlMode;
   long long rt_ticks;

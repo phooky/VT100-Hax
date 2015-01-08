@@ -399,11 +399,13 @@ bool hexParse(char* buf, int n, uint16_t& d) {
 
 void Vt100Sim::run() {
   const int CPUHZ = 1000000;
+  const int alrm_interval = 1000000 / 20;   // 20 Times per second.
   signal(SIGALRM,sig_alrm);
-  ualarm(5000,5000);
+  ualarm(alrm_interval,alrm_interval);
   int steps = 0;
   needsUpdate = true;
   gettimeofday(&last_sync, 0);
+  has_breakpoints = (breakpoints.size() != 0);
   while(1) {
     if (running) {
       step();
@@ -412,7 +414,7 @@ void Vt100Sim::run() {
       }
       uint16_t pc = (uint16_t)(PC-ram);
       //wprintw(msgWin,"BP %d PC %d\n",breakpoints.size(),pc);wrefresh(msgWin);
-      if (breakpoints.find(pc) != breakpoints.end()) {
+      if (has_breakpoints && breakpoints.find(pc) != breakpoints.end()) {
 	wprintw(msgWin,"Breakpoint trace for %04x:\n",pc);
 	for (int i = 10; i > 1; i--) {
 	  uint16_t laddr = his[(HISIZE+h_next-i)%HISIZE].h_adr;
@@ -443,8 +445,14 @@ void Vt100Sim::run() {
       gettimeofday(&last_sync, 0);
       rt_ticks = 0;
     }
-    if (sigAlrm && needsUpdate) { sigAlrm = 0; update();}
-    int ch = getch();
+    int ch = ERR;
+    if (sigAlrm) {
+      if (needsUpdate) update();
+      ch = getch();
+      sigAlrm = 0;
+
+      has_breakpoints = (breakpoints.size() != 0);
+    }
     if (ch != ERR) {
       if (ch == KEY_F(10)) { // Control Mode key
 	controlMode = !controlMode;
