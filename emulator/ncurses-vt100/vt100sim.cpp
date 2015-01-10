@@ -34,9 +34,12 @@ WINDOW* statusBar;
 WINDOW* bpWin;
 
 Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputMode(false),
-							dc11(true), dc12(false), controlMode(!running)
+							dc12(true), controlMode(!running)
 {
   this->romPath = romPath;
+  base_attr = 0;
+  screen_rev = 0;
+  blink_ff = 0;
 
   //breakpoints.insert(8);
   //breakpoints.insert(0xb);
@@ -222,6 +225,8 @@ void Vt100Sim::ioOut(BYTE addr, BYTE data) {
       //wprintw(msgWin,"PUSART CMD: %x\n", data);wrefresh(msgWin);
       uart.write_command(data);
       break;
+    case 0x02:
+      break;
     case 0x82:
         kbd.set_status(data);
         break;
@@ -231,20 +236,41 @@ void Vt100Sim::ioOut(BYTE addr, BYTE data) {
     case 0x42:
       bright = data;
       break;
+
     case 0xa2:
-      //wprintw(msgWin,"DC11 %02x\n",data);
-      //wrefresh(msgWin);
-      dc11 = true;
-      break;
-    case 0xc2:
       //wprintw(msgWin,"DC12 %02x\n",data);
       //wrefresh(msgWin);
       dc12 = true;
-        break;
+      switch (data & 0xF) {
+      case 0: case 1: case 2: case 3:
+         scroll_latch = ((scroll_latch & 0x0C) | (data & 0x3));
+	 break;
+      case 4: case 5: case 6: case 7:
+         scroll_latch = ((scroll_latch & 0x03) | ((data & 0x3)<<2));
+	 break;
+      case 8: /* Toggle blink FF */
+	 blink_ff = ~blink_ff;
+         break;
+      case 9: /* Vertical retrace clear. */
+         break;
+      case 10: screen_rev = 0x80; break;
+      case 11: screen_rev = 0; break;
+
+      case 12: base_attr = 1; blink_ff = 0; break;	/* Underline */
+      case 13: base_attr = 0; blink_ff = 0; break;	/* Reverse */
+      case 14: case 15: blink_ff = 0; break;
+      }
+      break;
+
+    case 0xc2:
+      //wprintw(msgWin,"DC11 %02x\n",data);
+      //wrefresh(msgWin);
+      break;
 
     default:
-      //printf("OUT PORT %02x <- %02x\n",addr,data);fflush(stdout);
-        break;
+	wprintw(msgWin,"OUT PORT %02x <- %02x\n",addr,data);
+	wrefresh(msgWin);
+	break;
     }
 }
 
@@ -573,17 +599,17 @@ void Vt100Sim::step()
       //wprintw(msgWin,"UART interrupt\n");wrefresh(msgWin);
     }
   }
-  if (dc11 && lba4.add_ticks(t)) {
+  if (dc12 && lba4.add_ticks(t)) {
     if (kbd.clock(lba4.get_value())) {
       int_data |= 0xcf;
       int_int = 1;
       //wprintw(msgWin,"KBD interrupt\n");wrefresh(msgWin);
     }
   }
-  if (dc11 && lba7.add_ticks(t)) {
+  if (dc12 && lba7.add_ticks(t)) {
     nvr.clock(lba7.get_value());
   }
-  if (dc11 && vertical.add_ticks(t)) {
+  if (dc12 && vertical.add_ticks(t)) {
     if (vertical.get_value()) {
       int_data |= 0xe7;
       int_int = 1;
@@ -636,11 +662,9 @@ void Vt100Sim::dispVideo() {
   int my,mx;
   getmaxyx(vidWin,my,mx);
   werase(vidWin);
-  if (mx>=134) box(vidWin,0,0);
-  mvwprintw(vidWin,0,1,"Video [bright %x]",bright);
   wattron(vidWin,COLOR_PAIR(4));
   uint8_t y = -2;
-  for (uint8_t i = 1; i < 100; i++) {
+  for (uint8_t i = 1; i < 27; i++) {
         char* p = (char*)ram + start;
         char* maxp = p + 133;
 	//if (*p != 0x7f) y++;
@@ -649,6 +673,7 @@ void Vt100Sim::dispVideo() {
         while (*p != 0x7f && p != maxp) {
             unsigned char c = *(p++);
 	    if (y > 0) {
+	      c ^= screen_rev;
 	      if (c == 0 || c == 127) {
 		waddch(vidWin,' ');
 	      } else  {
@@ -678,6 +703,10 @@ void Vt100Sim::dispVideo() {
         start = next;
     }
   wattroff(vidWin,COLOR_PAIR(4));
+  if (mx>=134) box(vidWin,0,0);
+  mvwprintw(vidWin,0,1,"Video [bright %x]",bright);
+  if (scroll_latch) wprintw(vidWin,"[Scroll %d]",scroll_latch);
+  // if (blink_ff) wprintw(vidWin,"[BLINK]");
   wrefresh(vidWin);
 }
 

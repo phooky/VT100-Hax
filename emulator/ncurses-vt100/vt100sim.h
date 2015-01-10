@@ -31,10 +31,14 @@ private:
   bool needsUpdate;
   std::set<uint16_t> breakpoints;
   bool has_breakpoints;
-  bool dc11, dc12;
+  bool dc12;
   bool controlMode;
   long long rt_ticks;
   struct timeval last_sync;
+  int scroll_latch;
+  int screen_rev;
+  int base_attr;
+  int blink_ff;
 public:
   void getString(const char* prompt, char* buffer, uint8_t sz);
   void step();
