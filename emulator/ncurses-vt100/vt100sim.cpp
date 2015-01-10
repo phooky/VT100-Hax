@@ -45,6 +45,7 @@ Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputM
   getmaxyx(stdscr,my,mx);
   start_color();
   raw();
+  nonl();
   noecho();
   keypad(stdscr,1);
   nodelay(stdscr,1);
@@ -167,7 +168,6 @@ void Vt100Sim::init() {
 
     wprintw(msgWin,"Function Key map:\n");
     wprintw(msgWin,"F1..F4 -> PF1..PF4\n");
-    wprintw(msgWin,"F5 -> Linefeed\n");
     wprintw(msgWin,"F6 -> Break\n");
     wprintw(msgWin,"F7 -> S-Break\n");
     wprintw(msgWin,"F8 -> Escape\n");
@@ -312,7 +312,7 @@ std::map<int,uint8_t> make_code_map() {
   m[KEY_F(4)] = 0x41;
   m[KEY_F(2)] = 0x42;
   // 0x43 -> '0'
-  m[KEY_F(5)] = 0x44; // Linefeed character:  m['\n'] = 0x44;
+  m['\n'] = 0x44; // Linefeed key:
   m['\\'] = 0x45; m['|'] = 0xc5;
   m['l'] = 0x46;
   m['k'] = 0x47;
@@ -341,7 +341,7 @@ std::map<int,uint8_t> make_code_map() {
   // 0x62 -> '5'
   // 0x63 -> '4'
   // 0x64 -> ^M	    (Return Key)
-  m['\r'] = 0x64; m['\n'] = 0x64; // Curses seems to remap \r to \n unconditionally.
+  m['\r'] = 0x64;
   m['.'] = 0x65; m['>'] = 0xe5;
   m[','] = 0x66; m['<'] = 0xe6;
   m['n'] = 0x67;
