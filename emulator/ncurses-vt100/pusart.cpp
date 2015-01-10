@@ -65,6 +65,10 @@ PUSART::PUSART() :
     if(tcsetattr(fds, TCSANOW, &orig_settings) < 0) {}
     close(fds);
 
+    /* The VT100 is not multi language */
+    unsetenv("LANG");
+    setenv("TERM", "vt100", 1);
+
     char * shell = getenv("SHELL");
     if (shell && *shell)
       execl(shell, shell, 0);
