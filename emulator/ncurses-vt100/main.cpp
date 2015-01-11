@@ -2,6 +2,13 @@
 #include <iostream>
 #include "vt100sim.h"
 #include "optionparser.h"
+#include <ncurses.h>
+#ifdef _XOPEN_CURSES
+#include <string.h>
+#include <langinfo.h>
+#endif
+
+int utf8_term = 0;
 
 option::ArgStatus checkBP(const option::Option& opt, bool msg) {
   char* tail;
@@ -22,6 +29,11 @@ const option::Descriptor usage[] = {
 
 int main(int argc, char *argv[])
 {
+#ifdef _XOPEN_CURSES
+  setlocale(LC_ALL, "");
+  utf8_term = (!strcmp("UTF-8", nl_langinfo(CODESET)));
+#endif
+
   argc-=(argc>0); argv+=(argc>0); // skip program name argv[0] if present
   option::Stats  stats(usage, argc, argv);
   option::Option options[stats.options_max], buffer[stats.buffer_max];

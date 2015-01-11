@@ -702,7 +702,6 @@ void Vt100Sim::dispVideo() {
 	      c &= 0x7F;
 
 	      if (screen_rev) inverse = ~inverse;
-	      if (altchar) /*...*/ ;
 
 	      if (inverse) wattron(vidWin,A_REVERSE);
 	      if (uline) wattron(vidWin,A_UNDERLINE);
@@ -712,7 +711,26 @@ void Vt100Sim::dispVideo() {
 	      if (c == 0 || c == 127) {
 		waddch(vidWin,' ');
 	      } else  {
+#ifdef _XOPEN_CURSES
+extern int utf8_term;
+static int xterm_chars[] = {
+	0x2666, 0x2592, 0x2409, 0x240c, 0x240d, 0x240a, 0x00b0, 0x00b1,
+	0x2424, 0x240b, 0x2518, 0x2510, 0x250c, 0x2514, 0x253c, 0x23ba,
+	0x23bb, 0x2500, 0x23bc, 0x23bd, 0x251c, 0x2524, 0x2534, 0x252c,
+	0x2502, 0x2264, 0x2265, 0x03c0, 0x2260, 0x00a3, 0x00b7, 0x0020
+	};
+
+		if ((c>=3 && c<=6) || (c<32 && utf8_term)) {
+		    wchar_t ubuf[2] = { xterm_chars[c-1], '\0' };
+		    waddwstr(vidWin,ubuf);
+		} else if (c < 32) { waddch(vidWin,NCURSES_ACS(0x5F+c));
+		} else if (altchar) {
+		    wchar_t ubuf[2] = { c+128, '\0' };
+		    waddwstr(vidWin,ubuf);
+		}
+#else
 		if (c < 32) { waddch(vidWin,NCURSES_ACS(0x5F+c)); }
+#endif
 		else { waddch(vidWin,c); }
 	      }
 
