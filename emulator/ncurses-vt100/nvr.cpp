@@ -2,6 +2,17 @@
 #include <stdio.h>
 #include <ncurses.h>
 
+/*
+ * The NVRAM is 1400 bit 'flash' device with 100 14-bit words.
+ *
+ * The address lines of the device are individual row and column selectors
+ * into a 10x10 array of 14 bit cells. Each cell (14bits) can be erased and
+ * written individually.
+ *
+ * The write is an expensive operation taking 20 milliseconds and
+ * a 35Volt power line.
+ */
+
 typedef enum {
     STANDBY = 0b111,
     ACCEPT_ADDR = 0b001,
