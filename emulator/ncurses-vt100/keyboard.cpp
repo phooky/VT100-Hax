@@ -50,6 +50,11 @@ void Keyboard::set_status(uint8_t status)
         clocks_until_next = 160;
 
     }
+
+    if (status & 0x80) {
+	// TODO: FIX too main beeps.
+	beep();
+    }
 }
 
 void Keyboard::keypress(uint8_t keycode)
