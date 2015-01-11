@@ -10,12 +10,13 @@ option::ArgStatus checkBP(const option::Option& opt, bool msg) {
   else return option::ARG_OK;
 }
 
-enum OptionIndex { UNKNOWN, HELP, RUN, BREAKPOINT };
+enum OptionIndex { UNKNOWN, HELP, RUN, BREAKPOINT, NOAVO };
 const option::Descriptor usage[] = {
   { UNKNOWN, 0, "", "", option::Arg::None, "Usage: vt100sim [options] ROM.bin" },
   { HELP, 0, "h", "help", option::Arg::None, "--help, -h\tPrint usage and exit" },
   { RUN, 0, "r", "run", option::Arg::None, "--run, -r\tImmediately run at startup"},
   { BREAKPOINT, 0, "b", "break", checkBP, "--break, -b\tInsert breakpoint"},
+  { NOAVO, 0, "N", "noavo", option::Arg::None, "--noavo, -b\tDisable AVO flag."},
   {0,0,0,0,0,0}
 };
 
@@ -34,7 +35,7 @@ int main(int argc, char *argv[])
   if (parse.nonOptionsCount() < 1) {
     std::cout << "No ROM specified"; return 1;
   }
-  sim = new Vt100Sim(parse.nonOptions()[0],running);
+  sim = new Vt100Sim(parse.nonOptions()[0],running,!options[NOAVO]);
   sim->init();
   for (option::Option* bpo = options[BREAKPOINT]; bpo != NULL; bpo = bpo->next()) {
     unsigned int bp = strtoul(bpo->arg,NULL,16);

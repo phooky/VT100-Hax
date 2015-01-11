@@ -33,8 +33,10 @@ WINDOW* msgWin;
 WINDOW* statusBar;
 WINDOW* bpWin;
 
-Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputMode(false),
-							dc12(true), controlMode(!running)
+Vt100Sim::Vt100Sim(const char* romPath, bool running, bool avo_on) :
+	running(running), inputMode(false),
+	dc12(true), controlMode(!running),
+	enable_avo(avo_on)
 {
   this->romPath = romPath;
   base_attr = 0;
@@ -191,7 +193,16 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
     return r;
   } else if (addr == 0x42) {
         // Read buffer flag
-        uint8_t flags = 0x02;
+	/*
+	    flags:
+		AVO	on=0x00, off=0x02
+		GPO	on=0x00, off=0x04
+		STP	on=0x08, off=0x00
+	 */
+        uint8_t flags = 0x06;	/* STP off, GPO off, AVO off */
+	if (enable_avo)
+	    flags = 0x04;
+
         if (lba7.get_value()) {
             flags |= 0x40;
         }
@@ -679,24 +690,38 @@ void Vt100Sim::dispVideo() {
 		wattron(vidWin,COLOR_PAIR(4));
 	}
         while (*p != 0x7f && p != maxp) {
-            unsigned char c = *(p++);
+            unsigned char c = *p;
+	    int attrs = enable_avo?p[0x1000]:0xF;
+	    p++;
 	    if (y > 0) {
-	      c ^= screen_rev;
+	      bool inverse = (c & 128);
+	      bool blink = !(attrs & 0x1);
+	      bool uline = !(attrs & 0x2);
+	      bool bold = !(attrs & 0x4);
+	      bool altchar = !(attrs & 0x8);
+	      c &= 0x7F;
+
+	      if (screen_rev) inverse = ~inverse;
+	      if (altchar) /*...*/ ;
+
+	      if (inverse) wattron(vidWin,A_REVERSE);
+	      if (uline) wattron(vidWin,A_UNDERLINE);
+	      if (blink) wattron(vidWin,A_BLINK);
+	      if (bold) wattron(vidWin,A_BOLD);
+
 	      if (c == 0 || c == 127) {
 		waddch(vidWin,' ');
 	      } else  {
-		bool inverse = c > 127;
-		if (inverse) {
-		  c-=128;
-		  wattron(vidWin,A_REVERSE);
-		}
 		if (c < 32) { waddch(vidWin,NCURSES_ACS(0x5F+c)); }
 		else { waddch(vidWin,c); }
-		if (inverse) wattroff(vidWin,A_REVERSE);
-		//wprintw(vidWin,"%02x",c);
 	      }
+
+	      if (lattr!=3) waddch(vidWin,' ');
+	      if (inverse) wattroff(vidWin,A_REVERSE);
+	      if (uline) wattroff(vidWin,A_UNDERLINE);
+	      if (bold) wattroff(vidWin,A_BOLD);
+	      if (blink) wattroff(vidWin,A_BLINK);
             }
-	    if (lattr!=3) waddch(vidWin,' ');
         }
         if (p == maxp) {
 	  //wprintw(msgWin,"Overflow line %d\n",i); wrefresh(msgWin);
