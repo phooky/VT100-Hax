@@ -661,6 +661,7 @@ void Vt100Sim::dispVideo() {
   uint16_t start = 0x2000;
   int my,mx;
   int lattr = 3;
+  int inscroll = 0;
   getmaxyx(vidWin,my,mx);
   werase(vidWin);
   wattron(vidWin,COLOR_PAIR(4));
@@ -671,6 +672,12 @@ void Vt100Sim::dispVideo() {
 	//if (*p != 0x7f) y++;
 	y++;
 	wmove(vidWin,y,(mx>=134));
+	if (scroll_latch) {
+	    if (inscroll)
+		wattron(vidWin,COLOR_PAIR(1));
+	    else
+		wattron(vidWin,COLOR_PAIR(4));
+	}
         while (*p != 0x7f && p != maxp) {
             unsigned char c = *(p++);
 	    if (y > 0) {
@@ -702,6 +709,7 @@ void Vt100Sim::dispVideo() {
         //printf("Next: %02x %02x\n",a1,a2);fflush(stdout);
         uint16_t next = (((a1&0x10)!=0)?0x2000:0x4000) | ((a1&0x0f)<<8) | a2;
 	lattr = ((a1 >> 5) & 0x3);
+	inscroll = ((a1 >> 7) & 0x1);
         if (start == next) break;
         start = next;
     }
