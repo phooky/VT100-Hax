@@ -660,6 +660,7 @@ void Vt100Sim::dispRegisters() {
 void Vt100Sim::dispVideo() {
   uint16_t start = 0x2000;
   int my,mx;
+  int lattr = 3;
   getmaxyx(vidWin,my,mx);
   werase(vidWin);
   wattron(vidWin,COLOR_PAIR(4));
@@ -688,6 +689,7 @@ void Vt100Sim::dispVideo() {
 		//wprintw(vidWin,"%02x",c);
 	      }
             }
+	    if (lattr!=3) waddch(vidWin,' ');
         }
         if (p == maxp) {
 	  //wprintw(msgWin,"Overflow line %d\n",i); wrefresh(msgWin);
@@ -699,6 +701,7 @@ void Vt100Sim::dispVideo() {
         unsigned char a2 = *(p++);
         //printf("Next: %02x %02x\n",a1,a2);fflush(stdout);
         uint16_t next = (((a1&0x10)!=0)?0x2000:0x4000) | ((a1&0x0f)<<8) | a2;
+	lattr = ((a1 >> 5) & 0x3);
         if (start == next) break;
         start = next;
     }
