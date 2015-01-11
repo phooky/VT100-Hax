@@ -13,16 +13,20 @@ Overview
 * Character generation ROM(s): 2KB(2048 bytes) for characters
 * Non-volatile RAM for storing configuration, ER1400 (1400 bits)
 
+* AVO Option: 1K extra main RAM, 4K of FOUR BIT RAM for attributes.
+
 Clocks
 ------
 
+Main Crystal: 24.8832 MHz
 NVR/LBA7: 15.734 kHz (63.556 uS); estimate at 8 * LBA4
 LBA4 period : 7.945uS
 Even line: 
 Kbd transmission time : 1.27mS/B
 Vertical freq: ~60 Hz
-Processor: 2.765 MHz
 Dot clock: 24 MHz in 132-char mode; 16 MHz in 80-char mode
+PSUART: 2.76480 MHz (Div9)
+Processor: 2.76480 MHz (Div9)
 
 Memory Map
 ----------
@@ -37,6 +41,10 @@ Memory Map
 0x8000  | 0x9fff  | 2Kx4   | AVO - program memory expansion ROM
 0xa000  | 0xbfff  |   8K   | AVO - program memory expansion ROM
 0xc000  | 0xffff  |  16K   | Unassigned
+
+ROM is four 2kx8 mask programmed ROMs.
+Main RAM is six 1kx4 static RAM chips.
+AVO RAM is another six 1kx4 static RAM chips.
 
 Modifications
 -------------
@@ -116,6 +124,7 @@ Location  | R/W | Description
 ----------|-----|------------
 0x00      | R/W | PUSART data bus
 0x01      | R/W | PUSART command port
+0x02      |  W  | Baud rate generator
 0x42      |  W  | Brightness D/A latch
 0x42      |  R  | Flags buffer
 0x62      |  W  | Non-volatile memory latch
@@ -198,5 +207,11 @@ X05af: lxi h,X05b8 (then jmp a18) // Likely table? (but subsequent code at 5b8 i
 X0c64: lxi h,X05ad (then jmp a18) // ... less likely table, feels like a chain
 X0c7a: lxi h,X0c8a (feels like a table)
 
+STP -- Standard Terminal Port
+-----------------------------
 
+This is an edge connector on the main board that contains breakout points for
+the RS232 and Modem lines. It can be used to disconnect the terminal from the
+normal serial port and connect it to an internal device. The external serial
+port is also available to the device as a plain connector.
 
