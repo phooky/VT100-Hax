@@ -14,6 +14,11 @@ PUSART::PUSART() :
   pty_fd(-1),
   has_rx_rdy(false)
 {
+}
+
+void PUSART::start_shell() {
+  if (pty_fd != -1) close(pty_fd);
+
   pty_fd = posix_openpt( O_RDWR | O_NOCTTY );
   grantpt(pty_fd);
   unlockpt(pty_fd);
@@ -87,20 +92,25 @@ void PUSART::write_command(uint8_t cmd) {
   if (mode_select_mode) {
     mode_select_mode = false;
     mode = cmd; // like we give a wet turd
+    if (pty_fd == -1)
+	start_shell();
   } else {
     command = cmd;
     if (cmd & 1<<6) { // INTERNAL RESET
       mode_select_mode = true;
     }
-    // Command 0x2f is BREAK
-    // Command 0x2d is hangup
+    // Command 0x2f is BREAK  (cmd & 0x08)
+    // Command 0x2d is hangup (cmd & 0x02) == 0
   }
 }
 
 void PUSART::write_data(uint8_t dat) {
   xoff = (dat == '\023');
   if (dat == '\023' || dat == '\021') return;
-  write(pty_fd,&dat,1);
+  if (write(pty_fd,&dat,1) < 0) {
+    close(pty_fd);
+    pty_fd = -1;
+  }
 }
 
 uint8_t PUSART::read_command() {
@@ -130,5 +140,7 @@ uint8_t PUSART::read_data() {
 }
 
 char* PUSART::pty_name() {
+  if (pty_fd == -1)
+    return (char*)"<NONE>";
   return ptsname(pty_fd);
 }

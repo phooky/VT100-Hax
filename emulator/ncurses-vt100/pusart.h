@@ -25,6 +25,7 @@ public:
   uint8_t read_data();
   uint8_t read_command();
   char* pty_name();
+  void start_shell();
 };
 
 #endif // PUSART_H
