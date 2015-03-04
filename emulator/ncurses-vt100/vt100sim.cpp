@@ -33,10 +33,15 @@ WINDOW* msgWin;
 WINDOW* statusBar;
 WINDOW* bpWin;
 
-Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputMode(false),
-							dc11(true), dc12(false), controlMode(!running)
+Vt100Sim::Vt100Sim(const char* romPath, bool running, bool avo_on) :
+	running(running), inputMode(false),
+	dc12(true), controlMode(!running),
+	enable_avo(avo_on)
 {
   this->romPath = romPath;
+  base_attr = 0;
+  screen_rev = 0;
+  blink_ff = 0;
 
   //breakpoints.insert(8);
   //breakpoints.insert(0xb);
@@ -45,6 +50,7 @@ Vt100Sim::Vt100Sim(const char* romPath, bool running) : running(running), inputM
   getmaxyx(stdscr,my,mx);
   start_color();
   raw();
+  nonl();
   noecho();
   keypad(stdscr,1);
   nodelay(stdscr,1);
@@ -167,7 +173,6 @@ void Vt100Sim::init() {
 
     wprintw(msgWin,"Function Key map:\n");
     wprintw(msgWin,"F1..F4 -> PF1..PF4\n");
-    wprintw(msgWin,"F5 -> Linefeed\n");
     wprintw(msgWin,"F6 -> Break\n");
     wprintw(msgWin,"F7 -> S-Break\n");
     wprintw(msgWin,"F8 -> Escape\n");
@@ -188,7 +193,16 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
     return r;
   } else if (addr == 0x42) {
         // Read buffer flag
-        uint8_t flags = 0x02;
+	/*
+	    flags:
+		AVO	on=0x00, off=0x02
+		GPO	on=0x00, off=0x04
+		STP	on=0x08, off=0x00
+	 */
+        uint8_t flags = 0x06;	/* STP off, GPO off, AVO off */
+	if (enable_avo)
+	    flags = 0x04;
+
         if (lba7.get_value()) {
             flags |= 0x40;
         }
@@ -222,6 +236,8 @@ void Vt100Sim::ioOut(BYTE addr, BYTE data) {
       //wprintw(msgWin,"PUSART CMD: %x\n", data);wrefresh(msgWin);
       uart.write_command(data);
       break;
+    case 0x02:
+      break;
     case 0x82:
         kbd.set_status(data);
         break;
@@ -231,20 +247,41 @@ void Vt100Sim::ioOut(BYTE addr, BYTE data) {
     case 0x42:
       bright = data;
       break;
+
     case 0xa2:
-      //wprintw(msgWin,"DC11 %02x\n",data);
-      //wrefresh(msgWin);
-      dc11 = true;
-      break;
-    case 0xc2:
       //wprintw(msgWin,"DC12 %02x\n",data);
       //wrefresh(msgWin);
       dc12 = true;
-        break;
+      switch (data & 0xF) {
+      case 0: case 1: case 2: case 3:
+         scroll_latch = ((scroll_latch & 0x0C) | (data & 0x3));
+	 break;
+      case 4: case 5: case 6: case 7:
+         scroll_latch = ((scroll_latch & 0x03) | ((data & 0x3)<<2));
+	 break;
+      case 8: /* Toggle blink FF */
+	 blink_ff = ~blink_ff;
+         break;
+      case 9: /* Vertical retrace clear. */
+         break;
+      case 10: screen_rev = 0x80; break;
+      case 11: screen_rev = 0; break;
+
+      case 12: base_attr = 1; blink_ff = 0; break;	/* Underline */
+      case 13: base_attr = 0; blink_ff = 0; break;	/* Reverse */
+      case 14: case 15: blink_ff = 0; break;
+      }
+      break;
+
+    case 0xc2:
+      //wprintw(msgWin,"DC11 %02x\n",data);
+      //wrefresh(msgWin);
+      break;
 
     default:
-      //printf("OUT PORT %02x <- %02x\n",addr,data);fflush(stdout);
-        break;
+	wprintw(msgWin,"OUT PORT %02x <- %02x\n",addr,data);
+	wrefresh(msgWin);
+	break;
     }
 }
 
@@ -312,7 +349,7 @@ std::map<int,uint8_t> make_code_map() {
   m[KEY_F(4)] = 0x41;
   m[KEY_F(2)] = 0x42;
   // 0x43 -> '0'
-  m[KEY_F(5)] = 0x44; // Linefeed character:  m['\n'] = 0x44;
+  m['\n'] = 0x44; // Linefeed key:
   m['\\'] = 0x45; m['|'] = 0xc5;
   m['l'] = 0x46;
   m['k'] = 0x47;
@@ -341,7 +378,7 @@ std::map<int,uint8_t> make_code_map() {
   // 0x62 -> '5'
   // 0x63 -> '4'
   // 0x64 -> ^M	    (Return Key)
-  m['\r'] = 0x64; m['\n'] = 0x64; // Curses seems to remap \r to \n unconditionally.
+  m['\r'] = 0x64;
   m['.'] = 0x65; m['>'] = 0xe5;
   m[','] = 0x66; m['<'] = 0xe6;
   m['n'] = 0x67;
@@ -399,11 +436,13 @@ bool hexParse(char* buf, int n, uint16_t& d) {
 
 void Vt100Sim::run() {
   const int CPUHZ = 1000000;
+  const int alrm_interval = 1000000 / 20;   // 20 Times per second.
   signal(SIGALRM,sig_alrm);
-  ualarm(5000,5000);
+  ualarm(alrm_interval,alrm_interval);
   int steps = 0;
   needsUpdate = true;
   gettimeofday(&last_sync, 0);
+  has_breakpoints = (breakpoints.size() != 0);
   while(1) {
     if (running) {
       step();
@@ -412,7 +451,7 @@ void Vt100Sim::run() {
       }
       uint16_t pc = (uint16_t)(PC-ram);
       //wprintw(msgWin,"BP %d PC %d\n",breakpoints.size(),pc);wrefresh(msgWin);
-      if (breakpoints.find(pc) != breakpoints.end()) {
+      if (has_breakpoints && breakpoints.find(pc) != breakpoints.end()) {
 	wprintw(msgWin,"Breakpoint trace for %04x:\n",pc);
 	for (int i = 10; i > 1; i--) {
 	  uint16_t laddr = his[(HISIZE+h_next-i)%HISIZE].h_adr;
@@ -443,8 +482,14 @@ void Vt100Sim::run() {
       gettimeofday(&last_sync, 0);
       rt_ticks = 0;
     }
-    if (sigAlrm && needsUpdate) { sigAlrm = 0; update();}
-    int ch = getch();
+    int ch = ERR;
+    if (sigAlrm) {
+      if (needsUpdate) update();
+      ch = getch();
+      sigAlrm = 0;
+
+      has_breakpoints = (breakpoints.size() != 0);
+    }
     if (ch != ERR) {
       if (ch == KEY_F(10)) { // Control Mode key
 	controlMode = !controlMode;
@@ -565,17 +610,17 @@ void Vt100Sim::step()
       //wprintw(msgWin,"UART interrupt\n");wrefresh(msgWin);
     }
   }
-  if (dc11 && lba4.add_ticks(t)) {
+  if (dc12 && lba4.add_ticks(t)) {
     if (kbd.clock(lba4.get_value())) {
       int_data |= 0xcf;
       int_int = 1;
       //wprintw(msgWin,"KBD interrupt\n");wrefresh(msgWin);
     }
   }
-  if (dc11 && lba7.add_ticks(t)) {
+  if (dc12 && lba7.add_ticks(t)) {
     nvr.clock(lba7.get_value());
   }
-  if (dc11 && vertical.add_ticks(t)) {
+  if (dc12 && vertical.add_ticks(t)) {
     if (vertical.get_value()) {
       int_data |= 0xe7;
       int_int = 1;
@@ -626,34 +671,74 @@ void Vt100Sim::dispRegisters() {
 void Vt100Sim::dispVideo() {
   uint16_t start = 0x2000;
   int my,mx;
+  int lattr = 3;
+  int inscroll = 0;
   getmaxyx(vidWin,my,mx);
   werase(vidWin);
-  if (mx>=134) box(vidWin,0,0);
-  mvwprintw(vidWin,0,1,"Video [bright %x]",bright);
   wattron(vidWin,COLOR_PAIR(4));
   uint8_t y = -2;
-  for (uint8_t i = 1; i < 100; i++) {
+  for (uint8_t i = 1; i < 27; i++) {
         char* p = (char*)ram + start;
         char* maxp = p + 133;
 	//if (*p != 0x7f) y++;
 	y++;
 	wmove(vidWin,y,(mx>=134));
+	if (scroll_latch) {
+	    if (inscroll)
+		wattron(vidWin,COLOR_PAIR(1));
+	    else
+		wattron(vidWin,COLOR_PAIR(4));
+	}
         while (*p != 0x7f && p != maxp) {
-            unsigned char c = *(p++);
+            unsigned char c = *p;
+	    int attrs = enable_avo?p[0x1000]:0xF;
+	    p++;
 	    if (y > 0) {
+	      bool inverse = (c & 128);
+	      bool blink = !(attrs & 0x1);
+	      bool uline = !(attrs & 0x2);
+	      bool bold = !(attrs & 0x4);
+	      bool altchar = !(attrs & 0x8);
+	      c &= 0x7F;
+
+	      if (screen_rev) inverse = ~inverse;
+
+	      if (inverse) wattron(vidWin,A_REVERSE);
+	      if (uline) wattron(vidWin,A_UNDERLINE);
+	      if (blink) wattron(vidWin,A_BLINK);
+	      if (bold) wattron(vidWin,A_BOLD);
+
 	      if (c == 0 || c == 127) {
 		waddch(vidWin,' ');
 	      } else  {
-		bool inverse = c > 127;
-		if (inverse) {
-		  c-=128;
-		  wattron(vidWin,A_REVERSE);
+#ifdef _XOPEN_CURSES
+extern int utf8_term;
+static int xterm_chars[] = {
+	0x2666, 0x2592, 0x2409, 0x240c, 0x240d, 0x240a, 0x00b0, 0x00b1,
+	0x2424, 0x240b, 0x2518, 0x2510, 0x250c, 0x2514, 0x253c, 0x23ba,
+	0x23bb, 0x2500, 0x23bc, 0x23bd, 0x251c, 0x2524, 0x2534, 0x252c,
+	0x2502, 0x2264, 0x2265, 0x03c0, 0x2260, 0x00a3, 0x00b7, 0x0020
+	};
+
+		if ((c>=3 && c<=6) || (c<32 && utf8_term)) {
+		    wchar_t ubuf[2] = { xterm_chars[c-1], '\0' };
+		    waddwstr(vidWin,ubuf);
+		} else if (c < 32) { waddch(vidWin,NCURSES_ACS(0x5F+c));
+		} else if (altchar) {
+		    wchar_t ubuf[2] = { c+128, '\0' };
+		    waddwstr(vidWin,ubuf);
 		}
+#else
 		if (c < 32) { waddch(vidWin,NCURSES_ACS(0x5F+c)); }
+#endif
 		else { waddch(vidWin,c); }
-		if (inverse) wattroff(vidWin,A_REVERSE);
-		//wprintw(vidWin,"%02x",c);
 	      }
+
+	      if (lattr!=3) waddch(vidWin,' ');
+	      if (inverse) wattroff(vidWin,A_REVERSE);
+	      if (uline) wattroff(vidWin,A_UNDERLINE);
+	      if (bold) wattroff(vidWin,A_BOLD);
+	      if (blink) wattroff(vidWin,A_BLINK);
             }
         }
         if (p == maxp) {
@@ -666,10 +751,16 @@ void Vt100Sim::dispVideo() {
         unsigned char a2 = *(p++);
         //printf("Next: %02x %02x\n",a1,a2);fflush(stdout);
         uint16_t next = (((a1&0x10)!=0)?0x2000:0x4000) | ((a1&0x0f)<<8) | a2;
+	lattr = ((a1 >> 5) & 0x3);
+	inscroll = ((a1 >> 7) & 0x1);
         if (start == next) break;
         start = next;
     }
   wattroff(vidWin,COLOR_PAIR(4));
+  if (mx>=134) box(vidWin,0,0);
+  mvwprintw(vidWin,0,1,"Video [bright %x]",bright);
+  if (scroll_latch) wprintw(vidWin,"[Scroll %d]",scroll_latch);
+  // if (blink_ff) wprintw(vidWin,"[BLINK]");
   wrefresh(vidWin);
 }
 

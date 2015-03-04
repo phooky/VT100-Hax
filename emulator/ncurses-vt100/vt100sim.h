@@ -15,7 +15,7 @@ extern "C" {
 class Vt100Sim
 {
 public:
-  Vt100Sim(const char* romPath = 0,bool running=false);
+  Vt100Sim(const char* romPath = 0,bool running=false, bool avo_on=true);
   ~Vt100Sim();
   void init();
   BYTE ioIn(BYTE addr);
@@ -30,10 +30,16 @@ private:
   bool inputMode;
   bool needsUpdate;
   std::set<uint16_t> breakpoints;
-  bool dc11, dc12;
+  bool has_breakpoints;
+  bool dc12;
   bool controlMode;
+  bool enable_avo;
   long long rt_ticks;
   struct timeval last_sync;
+  int scroll_latch;
+  int screen_rev;
+  int base_attr;
+  int blink_ff;
 public:
   void getString(const char* prompt, char* buffer, uint8_t sz);
   void step();

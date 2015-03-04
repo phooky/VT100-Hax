@@ -18,6 +18,27 @@ bool Keyboard::get_tx_buf_empty() { return tx_buf_empty; }
 
 extern WINDOW* msgWin;
 
+/*
+ * The VT100 triggers keyboard scans by setting bit (1<<6) in the status.
+ * It then expects to receive one or more scan codes followed by an 0x7F
+ * byte to indicate the end of the scan. Each byte takes 160 clocks to send.
+ *
+ * Setup and NoScroll are triggered as soon as they are received.
+ *
+ * The Shift and Control keys are state driven and on independent rows,
+ * they do not count toward the three key maximum.
+ *
+ * Other keys must be NOT asserted for one scan then asserted for TWO scans
+ * before they will be triggered. Upto three keys may be pressed at the same
+ * time.
+ *
+ * The double scan and thee key maximum requirements prevent 'ghost'
+ * keypresses trigged by the maxtrix being accepted.
+ *
+ * There is a 9 character buffer for transmitting data to the host; this must
+ * have at least 3 bytes free. If it doesn't the keyboard lock is asserted.
+ */
+
 void Keyboard::set_status(uint8_t status)
 {
   last_status = status;
@@ -28,6 +49,11 @@ void Keyboard::set_status(uint8_t status)
         state = KBD_SENDING;
         clocks_until_next = 160;
 
+    }
+
+    if (status & 0x80) {
+	// TODO: FIX too main beeps.
+	beep();
     }
 }
 
