@@ -66,9 +66,9 @@ static const uint8_t addr_lines[ADDR_WIDTH] = {
   0xD2,
 };
 
-static const uint8_t ce_line = 0xF7;
-static const uint8_t oe_line = 0xC7;
-static const uint8_t we_line = 0xC6;
+static const uint8_t ce_line = 0xA3;
+static const uint8_t oe_line = 0xA7;
+static const uint8_t we_line = 0xC7;
 // power B7
 // gnd F0
 #else
@@ -96,13 +96,6 @@ static void prom_setup(bool read)
   out(we_line,1); ddr(we_line,1);
   out(oe_line,1); ddr(oe_line,1);
 
-  #ifdef PINOUT_PROMDATE
-  // power up
-  out(0xB7,1); ddr(0xB7, 1);
-  out(0xF0,0); ddr(0xF0, 0);
-  #endif
-  // power B7
-// gnd F0
 
   // Configure all of the address pins as outputs
   for (uint8_t i = 0; i < ADDR_WIDTH; i++) { 
@@ -250,6 +243,12 @@ int main(void)
   
   // Disable the ADC
   ADMUX = 0;
+
+  #ifdef PINOUT_PROMDATE
+  // power up
+  out(0xB7,1); ddr(0xB7, 1);
+  out(0xF0,0); ddr(0xF0, 0);
+  #endif
   
   prom_setup(true); // set up in read mode
   prom_read_mode();
