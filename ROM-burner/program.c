@@ -65,6 +65,12 @@ static const uint8_t addr_lines[ADDR_WIDTH] = {
   0xD0, 0xD1, 0xD4, 0xD5,
   0xD2,
 };
+
+static const uint8_t ce_line = 0xF7;
+static const uint8_t oe_line = 0xC7;
+static const uint8_t we_line = 0xC6;
+// power B7
+// gnd F0
 #else
 static const uint8_t io_lines[8] = {
   0xF0, 0xF1, 0xF2, 0xF3,
@@ -77,11 +83,11 @@ static const uint8_t addr_lines[ADDR_WIDTH] = {
   0xD7, 0xE0, 0xE1, 0xC0,
   0xC1
 };
-#endif
 
 static const uint8_t ce_line = 0xB6;
 static const uint8_t oe_line = 0xB5;
 static const uint8_t we_line = 0xB4;
+#endif
 
 static void prom_setup(bool read)
 {
@@ -89,6 +95,14 @@ static void prom_setup(bool read)
   out(ce_line,1); ddr(ce_line,1);
   out(we_line,1); ddr(we_line,1);
   out(oe_line,1); ddr(oe_line,1);
+
+  #ifdef PINOUT_PROMDATE
+  // power up
+  out(0xB7,1); ddr(0xB7, 1);
+  out(0xF0,0); ddr(0xF0, 0);
+  #endif
+  // power B7
+// gnd F0
 
   // Configure all of the address pins as outputs
   for (uint8_t i = 0; i < ADDR_WIDTH; i++) { 

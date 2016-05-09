@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import serial
 
 s = serial.Serial('/dev/ttyACM0')
