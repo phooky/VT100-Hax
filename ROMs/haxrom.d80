@@ -4726,7 +4726,7 @@ X1fd4:	ora	a
 	;; Reset counter to top; reset state to 0
 	;; Touches HL, A
 initss:
-	lxi	h,3fffh
+	lxi	h,8ca0h
 	shld	SSvfl
 	xra	a
 	sta	SSst
