@@ -2,6 +2,8 @@
  * \file PROM dancer
  *
  * Read up to 40 pin DIP PROMs using a Teensy++ 2.0
+ *
+ * (Terrible hack: write these dumb eproms for vt100 hax)
  */
 
 #include <avr/io.h>
@@ -47,19 +49,35 @@ printable(
 	return 0;
 }
 
+#define ADDR_WIDTH 13
 
+#define PINOUT_PROMDATE
+
+#ifdef PINOUT_PROMDATE
+static const uint8_t io_lines[8] = {
+  0xE6, 0xA2, 0xA1, 0xC0,
+  0xE1, 0xE0, 0xD7, 0xD6,
+};
+
+static const uint8_t addr_lines[ADDR_WIDTH] = {
+  0xE7, 0xB0, 0xB1, 0xB2,
+  0xB3, 0xB4, 0xB5, 0xB6,
+  0xD0, 0xD1, 0xD4, 0xD5,
+  0xD2,
+};
+#else
 static const uint8_t io_lines[8] = {
   0xF0, 0xF1, 0xF2, 0xF3,
   0xF4, 0xF5, 0xF6, 0xF7,
 };
 
-#define ADDR_WIDTH 13
 static const uint8_t addr_lines[ADDR_WIDTH] = {
   0xB7, 0xD0, 0xD1, 0xD2,
   0xD3, 0xD4, 0xD5, 0xD6,
   0xD7, 0xE0, 0xE1, 0xC0,
   0xC1
 };
+#endif
 
 static const uint8_t ce_line = 0xB6;
 static const uint8_t oe_line = 0xB5;

@@ -25,8 +25,8 @@
 #
 # make extcoff = Convert ELF to AVR Extended COFF.
 #
-# make program = Download the hex file to the device, using avrdude.
-#                Please customize the avrdude settings below first!
+# make burn = Download the hex file to the device, using avrdude.
+#             Please customize the avrdude settings below first!
 #
 # make debug = Start either simulavr or avarice as specified for debugging, 
 #              with avr-gdb or avr-insight as the front end for debugging.
@@ -458,10 +458,10 @@ gccversion :
 
 # Program the device.  
 ifeq ($(UNAME), Linux)
-program: $(TARGET).hex $(TARGET).eep
+burn: $(TARGET).hex $(TARGET).eep
 	~/opt/teensy_loader_cli/teensy_loader_cli -mmcu=$(MCU)  -w $(TARGET).hex
 else
-program: $(TARGET).hex $(TARGET).eep
+burn: $(TARGET).hex $(TARGET).eep
 	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH) $(AVRDUDE_WRITE_EEPROM)
 endif
 
@@ -633,4 +633,4 @@ $(shell mkdir $(OBJDIR) 2>/dev/null)
 # Listing of phony targets.
 .PHONY : all begin finish end sizebefore sizeafter gccversion \
 build elf hex eep lss sym coff extcoff \
-clean clean_list program debug gdb-config
+clean clean_list burn debug gdb-config
