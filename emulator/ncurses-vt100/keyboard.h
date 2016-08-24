@@ -8,6 +8,8 @@ typedef enum {
     KBD_IDLE =0,
     KBD_SENDING =1,
     KBD_RESPONDING =2,
+    KBD_SEND_1 =3,
+    KBD_SEND_2 =4,
 } KbdState;
 
 class Keyboard
@@ -17,10 +19,11 @@ public:
     uint8_t get_latch();
     bool get_tx_buf_empty();
 private:
-    KbdState state;
+    KbdState state, sending;
     uint8_t latch;
     uint8_t last_status;
-    bool tx_buf_empty;
+    uint8_t tx_buf_count;
+    uint8_t beeping;
     std::set<uint8_t> keys;
     std::set<uint8_t> scan;
     std::set<uint8_t>::iterator scan_iter;
@@ -32,6 +35,7 @@ public:
     void keypress(uint8_t keycode);
     // Gets a clock for LBA4
     bool clock(bool rising); // return true if an interrupt is generated
+    bool busy_scanning() { return !keys.empty(); }
 };
 
 #endif // KEYBOARD_H
