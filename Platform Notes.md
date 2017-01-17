@@ -109,14 +109,14 @@ Screen RAM organization
 Starts at 0x2000. Each line consists of a terminator (0x7f) followed by
 two bytes of address and attributes:
 
-7 | 6 5 | 4 | 3 2 1 0 | 7 6 5 4 3 2 1
---|-----|---|---------|--------------
-S | AA  | M | addr    | addr
+ 7 | 6 5 | 4 | 3 2 1 0 | 7 6 5 4 3 2 1
+---|-----|---|---------|--------------
+ S | AA  | M | addr    | addr
 
-S == 1 if part of scrolling region
-AA == 11 if normal atrributes
-M == 1 if ram starting at 0x2000, M = 0 if ram starting at 0x4000 (?)
-addr == low bits of address
+* S == 1 if part of scrolling region
+* AA == 11 if normal atrributes
+* M == 1 if ram starting at 0x2000, M = 0 if ram starting at 0x4000 (?)
+* addr == low bits of address
 
 Relevant port addresses
 -----------------------
