@@ -8,8 +8,8 @@ Overview
 * Basic display modes: 80x24 or 132x14 (132x24 for avo)
 * RAM: 3KB(3072 bytes) combined screen and scratch
 * ROM: 8KB(8192 bytes) for processor data and code
-** ROMs include a checksum which is checked at self-test
-** Checksum: every 2K, summed, mod 0xff == 0
+ * ROMs include a checksum which is checked at self-test
+ * Checksum: every 2K, summed, mod 0xff == 0
 * Character generation ROM(s): 2KB(2048 bytes) for characters
 * Non-volatile RAM for storing configuration, ER1400 (1400 bits)
 
