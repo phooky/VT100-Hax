@@ -18,15 +18,15 @@ Overview
 Clocks
 ------
 
-Main Crystal: 24.8832 MHz
-NVR/LBA7: 15.734 kHz (63.556 uS); estimate at 8 * LBA4
-LBA4 period : 7.945uS
-Even line: 
-Kbd transmission time : 1.27mS/B
-Vertical freq: ~60 Hz
-Dot clock: 24 MHz in 132-char mode; 16 MHz in 80-char mode
-PSUART: 2.76480 MHz (Div9)
-Processor: 2.76480 MHz (Div9)
+* Main Crystal: 24.8832 MHz
+* NVR/LBA7: 15.734 kHz (63.556 uS); estimate at 8 * LBA4
+* LBA4 period : 7.945uS
+* Even line: 
+* Kbd transmission time : 1.27mS/B
+* Vertical freq: ~60 Hz
+* Dot clock: 24 MHz in 132-char mode; 16 MHz in 80-char mode
+* PSUART: 2.76480 MHz (Div9)
+* Processor: 2.76480 MHz (Div9)
 
 Memory Map
 ----------
