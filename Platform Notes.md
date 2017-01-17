@@ -186,12 +186,10 @@ Convenience Functions in ROM
 
 Label  |   Description
 -------|----------------------
-X13de  |  add A to HL
-
-X1083  |  set DE bytes starting at HL to B
-X02a4  |  init: zero all RAM above stack
-X038b  |  memmov: copy B bytes from DE to HL
-X1083  |  memset: set DE bytes starting at HL to B
+0x13de |  add A to HL
+0x02a4 |  init: zero all RAM above stack
+0x038b |  memmov: copy B bytes from DE to HL
+0x1083 |  memset: set DE bytes starting at HL to B
 
 Control Function Parser
 -----------------------
