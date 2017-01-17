@@ -82,6 +82,7 @@ RAM Map
 We are using ??? as our screensaver counter.
 
 Setup Area
+----------
 
 Start   |  Size  |  Description
 --------|--------|-------------
