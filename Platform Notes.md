@@ -138,11 +138,15 @@ There is no even field mystery. It was the LBA 7 (also known as the NVR clock) a
 
 NVRAM interactions
 ------------------
-data is D0
-C1 is D1
-C2 is D2
-C3 is D3
-!SPDS is D5
+C1, C2, and C3 are the command pins on the ER1400 data sheet.
+
+Bits in the NVR memory latch port:
+
+* data is D0
+* C1 is D1
+* C2 is D2
+* C3 is D3
+* !SPDS is D5
 
 Accept address high, accept address low, standby, read, standby, (accept data is standby?)
 22 23x9 22 23x9 0x2f 0x2d 0x2f 0x25 0x2f 0x30 0x23
