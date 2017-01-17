@@ -56,11 +56,11 @@ At end of roms -- 1fd7 to 2000 -- 41 bytes
 
  Start  |   End   |  Size  |  Description
 --------|---------|--------|-------------
-0x22c2  | 0x22c4  |   2B   | SSvfl Vertical frames left until screensaver
-0x22c4  | 0x22c5  |   1B   | SSbfl Vertical frames left until next brightness step down
-0x22c5  | 0x22c6  |   1B   | SSst  Screensaver state: 00 off, 01 fading, 02 on
-0x22c6  | 0x22c8  |   2B   | SSprv Remember previous first line ptr
-0x22c8  | 0x22c9  |   1B   | SSbrt Backup of brightness
+0x22c2  | 0x22c4  |   2B   | `SSvfl` Vertical frames left until screensaver
+0x22c4  | 0x22c5  |   1B   | `SSbfl` Vertical frames left until next brightness step down
+0x22c5  | 0x22c6  |   1B   | `SSst`  Screensaver state: 00 off, 01 fading, 02 on
+0x22c6  | 0x22c8  |   2B   | `SSprv` Remember previous first line ptr
+0x22c8  | 0x22c9  |   1B   | `SSbrt` Backup of brightness
 
 RAM Map
 -------
