@@ -36,6 +36,7 @@ private:
   bool enable_avo;
   long long rt_ticks;
   struct timeval last_sync;
+  int vscan_tick, refresh_clock;
   int scroll_latch;
   int screen_rev;
   int base_attr;
