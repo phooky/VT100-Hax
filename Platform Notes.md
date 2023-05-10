@@ -8,8 +8,8 @@ Overview
 * Basic display modes: 80x24 or 132x14 (132x24 for avo)
 * RAM: 3KB(3072 bytes) combined screen and scratch
 * ROM: 8KB(8192 bytes) for processor data and code
-** ROMs include a checksum which is checked at self-test
-** Checksum: every 2K, summed, mod 0xff == 0
+ * ROMs include a checksum which is checked at self-test
+ * Checksum: every 2K, summed, mod 0xff == 0
 * Character generation ROM(s): 2KB(2048 bytes) for characters
 * Non-volatile RAM for storing configuration, ER1400 (1400 bits)
 
@@ -18,15 +18,15 @@ Overview
 Clocks
 ------
 
-Main Crystal: 24.8832 MHz
-NVR/LBA7: 15.734 kHz (63.556 uS); estimate at 8 * LBA4
-LBA4 period : 7.945uS
-Even line: 
-Kbd transmission time : 1.27mS/B
-Vertical freq: ~60 Hz
-Dot clock: 24 MHz in 132-char mode; 16 MHz in 80-char mode
-PSUART: 2.76480 MHz (Div9)
-Processor: 2.76480 MHz (Div9)
+* Main Crystal: 24.8832 MHz
+* NVR/LBA7: 15.734 kHz (63.556 uS); estimate at 8 * LBA4
+* LBA4 period : 7.945uS
+* Even line: 
+* Kbd transmission time : 1.27mS/B
+* Vertical freq: ~60 Hz
+* Dot clock: 24 MHz in 132-char mode; 16 MHz in 80-char mode
+* PSUART: 2.76480 MHz (Div9)
+* Processor: 2.76480 MHz (Div9)
 
 Memory Map
 ----------
@@ -56,11 +56,11 @@ At end of roms -- 1fd7 to 2000 -- 41 bytes
 
  Start  |   End   |  Size  |  Description
 --------|---------|--------|-------------
-0x22c2  | 0x22c4  |   2B   | SSvfl Vertical frames left until screensaver
-0x22c4  | 0x22c5  |   1B   | SSbfl Vertical frames left until next brightness step down
-0x22c5  | 0x22c6  |   1B   | SSst  Screensaver state: 00 off, 01 fading, 02 on
-0x22c6  | 0x22c8  |   2B   | SSprv Remember previous first line ptr
-0x22c8  | 0x22c9  |   1B   | SSbrt Backup of brightness
+0x22c2  | 0x22c4  |   2B   | `SSvfl` Vertical frames left until screensaver
+0x22c4  | 0x22c5  |   1B   | `SSbfl` Vertical frames left until next brightness step down
+0x22c5  | 0x22c6  |   1B   | `SSst`  Screensaver state: 00 off, 01 fading, 02 on
+0x22c6  | 0x22c8  |   2B   | `SSprv` Remember previous first line ptr
+0x22c8  | 0x22c9  |   1B   | `SSbrt` Backup of brightness
 
 RAM Map
 -------
@@ -82,6 +82,7 @@ RAM Map
 We are using ??? as our screensaver counter.
 
 Setup Area
+----------
 
 Start   |  Size  |  Description
 --------|--------|-------------
@@ -108,14 +109,14 @@ Screen RAM organization
 Starts at 0x2000. Each line consists of a terminator (0x7f) followed by
 two bytes of address and attributes:
 
-7 | 6 5 | 4 | 3 2 1 0 | 7 6 5 4 3 2 1
---|-----|---|---------|--------------
-S | AA  | M | addr    | addr
+ 7 | 6 5 | 4 | 3 2 1 0 | 7 6 5 4 3 2 1
+---|-----|---|---------|--------------
+ S | AA  | M | addr    | addr
 
-S == 1 if part of scrolling region
-AA == 11 if normal atrributes
-M == 1 if ram starting at 0x2000, M = 0 if ram starting at 0x4000 (?)
-addr == low bits of address
+* S == 1 if part of scrolling region
+* AA == 11 if normal atrributes
+* M == 1 if ram starting at 0x2000, M = 0 if ram starting at 0x4000 (?)
+* addr == low bits of address
 
 Relevant port addresses
 -----------------------
@@ -137,11 +138,15 @@ There is no even field mystery. It was the LBA 7 (also known as the NVR clock) a
 
 NVRAM interactions
 ------------------
-data is D0
-C1 is D1
-C2 is D2
-C3 is D3
-!SPDS is D5
+C1, C2, and C3 are the command pins on the ER1400 data sheet.
+
+Bits in the NVR memory latch port:
+
+* data is D0
+* C1 is D1
+* C2 is D2
+* C3 is D3
+* !SPDS is D5
 
 Accept address high, accept address low, standby, read, standby, (accept data is standby?)
 22 23x9 22 23x9 0x2f 0x2d 0x2f 0x25 0x2f 0x30 0x23
@@ -181,12 +186,10 @@ Convenience Functions in ROM
 
 Label  |   Description
 -------|----------------------
-X13de  |  add A to HL
-
-X1083  |  set DE bytes starting at HL to B
-X02a4  |  init: zero all RAM above stack
-X038b  |  memmov: copy B bytes from DE to HL
-X1083  |  memset: set DE bytes starting at HL to B
+0x13de |  add A to HL
+0x02a4 |  init: zero all RAM above stack
+0x038b |  memmov: copy B bytes from DE to HL
+0x1083 |  memset: set DE bytes starting at HL to B
 
 Control Function Parser
 -----------------------
@@ -200,12 +203,15 @@ LXI LIST
 --------
 
 All value loads that could be addresses:
-X01c3: lxi h,X0815 ???
-       lxi h, 020e ??? right after loads keymapping table
-X0431: lxi b,X0113 (then call 0f7e,0e47)
-X05af: lxi h,X05b8 (then jmp a18) // Likely table? (but subsequent code at 5b8 is valid)
-X0c64: lxi h,X05ad (then jmp a18) // ... less likely table, feels like a chain
-X0c7a: lxi h,X0c8a (feels like a table)
+
+Address | Instruction | Description
+--------|-------------|------------
+ 0x01c3 | `lxi h,X0815` | ???
+        | `lxi h, 020e` | ??? right after loads keymapping table
+ 0x0431 | `lxi b,X0113` | (then call 0f7e,0e47)
+ 0x05af | `lxi h,X05b8` | (then jmp a18) // Likely table? (but subsequent code at 5b8 is valid)
+ 0x0c64 | `lxi h,X05ad` | (then jmp a18) // ... less likely table, feels like a chain
+ 0x0c7a | `lxi h,X0c8a` | (feels like a table)
 
 STP -- Standard Terminal Port
 -----------------------------
