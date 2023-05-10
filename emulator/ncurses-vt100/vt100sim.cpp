@@ -212,7 +212,7 @@ BYTE Vt100Sim::ioIn(BYTE addr) {
 	if (uart.xmit_ready()) {
 	  flags |= 0x01;
 	}
-        if (t_ticks % 2000 < 100) { flags |= 0x10; flags |= 0x80; }
+        if (t_ticks % (46084*2) < 46084) flags |= 0x10;
         if (kbd.get_tx_buf_empty()) {
             flags |= 0x80; // kbd ready?
         }
@@ -284,8 +284,6 @@ void Vt100Sim::ioOut(BYTE addr, BYTE data) {
 	break;
     }
 }
-
-volatile sig_atomic_t sigAlrm = 0;
 
 std::map<int,uint8_t> make_code_map() {
   std::map<int,uint8_t> m;
@@ -416,8 +414,6 @@ std::map<int,uint8_t> make_code_map() {
 
 std::map<int,uint8_t> code = make_code_map();
 
-void sig_alrm(int signo) { sigAlrm = 1; }
-
 bool hexParse(char* buf, int n, uint16_t& d) {
   d = 0;
   for (int i = 0; i < n; i++) {
@@ -435,10 +431,7 @@ bool hexParse(char* buf, int n, uint16_t& d) {
 }
 
 void Vt100Sim::run() {
-  const int CPUHZ = 1000000;
-  const int alrm_interval = 1000000 / 20;   // 20 Times per second.
-  signal(SIGALRM,sig_alrm);
-  ualarm(alrm_interval,alrm_interval);
+  const int CPUHZ = 2764800;
   int steps = 0;
   needsUpdate = true;
   gettimeofday(&last_sync, 0);
@@ -478,16 +471,23 @@ void Vt100Sim::run() {
 	}
       }
     } else {
-      usleep(5000);
+      usleep(50000);
       gettimeofday(&last_sync, 0);
       rt_ticks = 0;
     }
     int ch = ERR;
-    if (sigAlrm) {
+    if (vscan_tick) {
+      vscan_tick--;
+      refresh_clock++;
+      if (needsUpdate && refresh_clock>3) { update(); refresh_clock=0; }
+
+      if (!kbd.busy_scanning())
+	  ch = getch();
+
+      has_breakpoints = (breakpoints.size() != 0);
+    } else if (!running) {
       if (needsUpdate) update();
       ch = getch();
-      sigAlrm = 0;
-
       has_breakpoints = (breakpoints.size() != 0);
     }
     if (ch != ERR) {
@@ -495,7 +495,7 @@ void Vt100Sim::run() {
 	controlMode = !controlMode;
 	dispStatus();
       } else if (controlMode) {
-	if (ch == 'q') {
+	if (ch == 'q' || ch == 4 || ch == 3) {
 	  return;
 	}
 	else if (ch == ' ') {
@@ -521,6 +521,7 @@ void Vt100Sim::run() {
 	    mvwprintw(statusBar,0,0,"Bad breakpoint %s\n",bpbuf); 
 	  }
 	  // set up breakpoints
+	  gettimeofday(&last_sync, 0);	// CPU was frozen
 	}
 	else if (ch == 'd') {
 	  char bpbuf[10];
@@ -540,6 +541,7 @@ void Vt100Sim::run() {
 	    mvwprintw(statusBar,0,0,"Bad breakpoint %s\n",bpbuf); 
 	  }
 	  // set up breakpoints
+	  gettimeofday(&last_sync, 0);	// CPU was frozen
 	}
       }
       else {
@@ -624,6 +626,7 @@ void Vt100Sim::step()
     if (vertical.get_value()) {
       int_data |= 0xe7;
       int_int = 1;
+      vscan_tick++;
     }
   }
   needsUpdate = true;
